@@ -1,0 +1,41 @@
+repos:
+  # Sort imports using Ruff's import sorter
+  - repo: local
+    hooks:
+      - id: ruff-isort-fix
+        name: ruff-isort-fix
+        entry: ruff check
+        args: [--select, "I", "--fix"]
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # Format Python code using Ruff
+  - repo: local
+    hooks:
+      - id: ruff-format
+        name: ruff-format
+        entry: ruff format
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # Lint with Ruff (full checks except formatting/imports)
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff-check
+        entry: ruff check
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  # Type checking with MyPy
+  - repo: local
+    hooks:
+      - id: mypy-check
+        name: mypy-check
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false
