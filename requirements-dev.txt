@@ -6,3 +6,4 @@ httpx
 ruff
 mypy
 pre-commit
+aiosqlite
