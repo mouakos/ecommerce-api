@@ -1,6 +1,7 @@
 repos:
   # Sort imports using Ruff's import sorter
-  - repo: local
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.6.9
     hooks:
       - id: ruff-isort-fix
         name: ruff-isort-fix
@@ -11,7 +12,8 @@ repos:
         pass_filenames: false
 
   # Format Python code using Ruff
-  - repo: local
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.12.8
     hooks:
       - id: ruff-format
         name: ruff-format
@@ -21,7 +23,8 @@ repos:
         pass_filenames: false
 
   # Lint with Ruff (full checks except formatting/imports)
-  - repo: local
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.12.8
     hooks:
       - id: ruff-check
         name: ruff-check
@@ -31,7 +34,8 @@ repos:
         pass_filenames: false
 
   # Type checking with MyPy
-  - repo: local
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.910
     hooks:
       - id: mypy-check
         name: mypy-check
