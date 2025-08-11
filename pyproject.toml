@@ -58,7 +58,6 @@ convention = "google"
 [tool.mypy]
 python_version = "3.12"
 files = ["app/**/*.py"]
-plugins = ["pydantic.mypy"]
 strict = true
 disallow_any_unimported = true
 warn_unreachable = true
