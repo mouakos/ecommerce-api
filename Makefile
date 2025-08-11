@@ -10,15 +10,15 @@ dev:
 
 # Run tests
 test:
-	pytest 
+	pytest
 
 # Lint the code
 lint:
-	ruff check 
+	ruff check
 
 # Format the code
 fmt:
-	ruff format 
+	ruff format
 
 # Start the containers
 up:
