@@ -1,0 +1,49 @@
+[project]
+name = "E-Commerce API"
+version = "0.1.0"
+description = "FastAPI + SQLModel async backend"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Stephane Mouako" }]
+license = { text = "MIT" }
+dependencies = []  # using requirements.txt
+
+[tool.ruff]
+line-length = 80
+target-version = "py312"
+extend-exclude = ["alembic/"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["E","F","I","UP","B","ASYNC","S"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_optional = true
+
+[tool.pytest.ini_options]
+addopts = """
+  --cov=app
+  --cov-report=term-missing
+  --cov-report=html
+  --cov-fail-under=80
+"""
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+filterwarnings = [
+  "ignore::DeprecationWarning:pydantic.*",
+  "ignore::DeprecationWarning:sqlalchemy.*",
+]
+python_files = "test_*.py"

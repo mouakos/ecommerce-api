@@ -5,3 +5,7 @@ asyncpg
 alembic
 pydantic-settings
 python-dotenv
+python-multipart
+passlib[bcrypt]
+python-jose
+email-validator
