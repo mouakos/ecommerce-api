@@ -6,9 +6,10 @@ repos:
         args: [--fix]
         name: ruff-check
         entry: ruff check
-        language: system
+        language: python
         types: [python]
         pass_filenames: false
+        additional_dependencies: [ruff]
 
   # Run the formatter.
   - repo: local
@@ -16,9 +17,10 @@ repos:
       - id: ruff-format
         name: ruff-format
         entry: ruff format
-        language: system
+        language: python
         types: [python]
         pass_filenames: false
+        additional_dependencies: [ruff]
 
   # Type checking with MyPy
   - repo: local
@@ -26,6 +28,11 @@ repos:
       - id: mypy-check
         name: mypy-check
         entry: mypy
-        language: system
+        language: python
         types: [python]
         pass_filenames: false
+        additional_dependencies:
+          - mypy
+          - pydantic-settings
+          - sqlmodel
+          - fastapi
