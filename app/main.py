@@ -7,4 +7,4 @@ from app.core.config import settings
 
 app = FastAPI(title=settings.APP_NAME)
 
-app.include_router(health_router, prefix="/api/v1")
+app.include_router(health_router)
