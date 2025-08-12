@@ -36,7 +36,7 @@ jobs:
         run: |
           mypy --version || true
           mypy
-      - name: Test with pyt
+      - name: Test with pytest
         run: |
           pytest
       - name: Upload HTML coverage report

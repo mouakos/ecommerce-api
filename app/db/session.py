@@ -3,14 +3,16 @@
 from collections.abc import AsyncGenerator
 
 from models import *  # noqa: F403
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel
 
 from app.core.config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False, pool_pre_ping=True)
-AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async_engine = create_async_engine(settings.DATABASE_URL, echo=True)
+
+AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
+    bind=async_engine, expire_on_commit=False
+)
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -22,5 +24,5 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 # Optional: create tables for quick local dev (use Alembic in real flows)
 async def init_models() -> None:
     """Create database tables."""
-    async with engine.begin() as conn:
+    async with async_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)

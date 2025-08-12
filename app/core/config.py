@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "Ecommerce API"
     # e.g. "postgresql+asyncpg://app:app@localhost:5432/ecom"
-    DATABASE_URL: str
+    DATABASE_URL: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
