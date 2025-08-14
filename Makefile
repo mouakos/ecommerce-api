@@ -1,55 +1,70 @@
-.PHONY: install dev test lint fmt up down migrate
+help: ## Show available commands
+	@echo Available commands:
+	@echo   install       - Install dependencies
+	@echo   dev           - Run the application
+	@echo   test          - Run tests
+	@echo   lint          - Lint the code
+	@echo   fmt           - Format the code
+	@echo   precommit     - Run pre-commit hooks on all files
+	@echo   up            - Start db containers
+	@echo   down          - Stop containers
+	@echo   reset-db      - Drop & recreate database (dev only)
+	@echo   mig.new       - Create a new migration (MSG=...)
+	@echo   mig.up        - Apply migrations
+	@echo   mig.down      - Roll back last migration
+	@echo   mig.history   - Show migration history
+	@echo   mig.stamp     - Stamp head (careful!)
+	@echo   mig.status    - Show migration status
 
-# Install dependencies
-install:
+.PHONY: install dev test lint fmt up down reset-db mig.new mig.up mig.down mig.history mig.stamp mig.status
+
+install: ## Install dependencies
 	pip install -r requirements-dev.txt
 
-# Run the application
-dev:
+dev: ## Run the application
 	uvicorn app.main:app --reload
 
-# Run tests
-test:
+test: ## Run tests with pytest
 	pytest
 
-# Lint the code
-lint:
+lint: ## Lint the code using ruff
 	ruff check
 
-# Format the code
-fmt:
+fmt: ## Format the code using ruff
 	ruff format
 
-# Start the containers
-up:
+precommit: ## Run pre-commit hooks on all files
+	pre-commit run --all-files
+
+up: ## Start the docker containers
 	docker compose up -d db pgadmin
 
-# Stop the containers
-down:
+down: ## Stop the docker containers
 	docker compose down
 
-# Create a new autogen migration (local dev). Pass a message: make mig.new MSG="add orders"
-mig.new:
-	@[ "${MSG}" ] || (echo "MSG is required, e.g. make mig.new MSG='add orders'"; exit 1)
-	alembic revision --rev-id $$(date +%Y%m%d%H%M%S) --autogenerate -m "${MSG}"
-
-# Apply migrations (dev/CI/prod)
-mig.up:
+reset-db: ## Drop & recreate database (dev only)
+	docker compose down -v
+	docker compose up -d db
 	alembic upgrade head
 
-# Roll back last migration (local only)
-mig.down:
+mig.new: ## Create a new autogen migration (local dev). Pass a message: make mig.new MSG="add orders"
+ifndef MSG
+	$(error MSG is required, e.g. make mig.new MSG='init DB')
+endif
+	alembic revision --autogenerate -m "$(MSG)"
+
+mig.up: ## Apply migrations (dev/CI/prod)
+	alembic upgrade head
+
+mig.down: ## Roll back last migration (local only)
 	alembic downgrade -1
 
-# Show history
-mig.history:
+mig.history: ## Show the migration history
 	alembic history --verbose
 
-# Mark DB as up-to-date without running scripts (careful!)
-mig.stamp:
+mig.stamp: ## Mark DB as up-to-date without running scripts (careful!)
 	alembic stamp head
 
-# Check current vs heads (useful in CI logs)
-mig.status:
+mig.status: ## Check current vs heads (useful in CI logs)
 	alembic current
 	alembic heads
