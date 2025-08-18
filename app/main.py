@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 
 from app.api.v1.category_routes import router as category_router
+from app.api.v1.product_routes import router as product_router
 from app.core.error_handler import register_exception_handlers
 
 app = FastAPI(
@@ -36,3 +37,4 @@ register_exception_handlers(app)
 
 # Include routers
 app.include_router(category_router)
+app.include_router(product_router)
