@@ -27,12 +27,12 @@ class CategoryService:
         return list(res.scalars().all())
 
     @staticmethod
-    async def create(db: AsyncSession, data: CategoryCreate) -> Category:
+    async def create(data: CategoryCreate, db: AsyncSession) -> Category:
         """Create a new category.
 
         Args:
-            db (AsyncSession): The database session.
             data (CategoryCreate): The category data to create.
+            db (AsyncSession): The database session.
 
         Raises:
             ConflictError: If a category with the same name already exists.
@@ -40,7 +40,7 @@ class CategoryService:
         Returns:
             Category: The created category.
         """
-        category = await CategoryService.get_by_name(db, data.name)
+        category = await CategoryService.get_by_name(data.name, db)
         if category:
             raise ConflictError("Category with this name already exists.")
 
@@ -51,12 +51,12 @@ class CategoryService:
         return new_category
 
     @staticmethod
-    async def get(db: AsyncSession, category_id: UUID) -> Category:
+    async def get(category_id: UUID, db: AsyncSession) -> Category:
         """Get a category by ID.
 
         Args:
-            db (AsyncSession): The database session.
             category_id (UUID): The ID of the category to retrieve.
+            db (AsyncSession): The database session.
 
         Raises:
             NotFoundError: If the category is not found.
@@ -70,13 +70,13 @@ class CategoryService:
         return category
 
     @staticmethod
-    async def update(db: AsyncSession, category_id: UUID, data: CategoryUpdate) -> Category:
+    async def update(category_id: UUID, data: CategoryUpdate, db: AsyncSession) -> Category:
         """Update a category by ID.
 
         Args:
-            db (AsyncSession): The database session.
             category_id (UUID): The ID of the category to update.
             data (CategoryUpdate): The updated category data.
+            db (AsyncSession): The database session.
 
         Raises:
             NotFoundError: If the category is not found.
@@ -89,40 +89,45 @@ class CategoryService:
         if not category:
             raise NotFoundError("Category not found.")
 
+        if data.name is not None:
+            existing_category = await CategoryService.get_by_name(data.name, db)
+            if existing_category and existing_category.id != category.id:
+                raise ConflictError("Category with this name already exists.")
+
         for k, v in data.model_dump(exclude_unset=True).items():
             setattr(category, k, v)
-
-        existing_category = await CategoryService.get_by_name(db, category.name)
-        if existing_category and existing_category.id != category.id:
-            raise ConflictError("Category with this name already exists.")
 
         await db.commit()
         await db.refresh(category)
         return category
 
     @staticmethod
-    async def delete(db: AsyncSession, category_id: UUID) -> None:
+    async def delete(category_id: UUID, db: AsyncSession) -> None:
         """Delete a category by ID.
 
         Args:
-            db (AsyncSession): The database session.
             category_id (UUID): The ID of the category to delete.
+            db (AsyncSession): The database session.
+
+        Raises:
+            NotFoundError: If the category is not found.
 
         Returns:
             None
         """
         category = await db.get(Category, category_id)
-        if category:
-            await db.delete(category)
-            await db.commit()
+        if category is None:
+            raise NotFoundError("Category not found.")
+        await db.delete(category)
+        await db.commit()
 
     @staticmethod
-    async def get_by_name(db: AsyncSession, name: str) -> Category | None:
+    async def get_by_name(name: str, db: AsyncSession) -> Category | None:
         """Get a category by name.
 
         Args:
-            db (AsyncSession): The database session.
             name (str): The name of the category to retrieve.
+            db (AsyncSession): The database session.
 
         Returns:
             Category | None: The category if found, None otherwise.

@@ -3,17 +3,23 @@
 These mixins can be used to add common fields like timestamps and UUIDs to your models.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, SQLModel
 
 
+def utcnow() -> datetime:
+    """Get the current UTC time."""
+    return datetime.now(UTC)
+
+
 class TimestampMixin(SQLModel):
     """Mixin to add created_at and updated_at timestamps."""
 
-    created_at: datetime | None = Field(default_factory=datetime.utcnow, nullable=False)
-    updated_at: datetime | None = Field(default_factory=datetime.utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=utcnow, nullable=False)
+
+    updated_at: datetime = Field(default_factory=utcnow, nullable=False)
 
 
 class UUIDMixin(SQLModel):

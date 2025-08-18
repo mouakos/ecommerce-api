@@ -8,8 +8,6 @@ repos:
         entry: ruff check
         language: python
         types: [python]
-        pass_filenames: false
-        additional_dependencies: [ruff]
 
   # Run the formatter.
   - repo: local
@@ -19,8 +17,6 @@ repos:
         entry: ruff format
         language: python
         types: [python]
-        pass_filenames: false
-        additional_dependencies: [ruff]
 
   # Type checking with MyPy
   - repo: local
@@ -30,9 +26,3 @@ repos:
         entry: mypy
         language: python
         types: [python]
-        pass_filenames: false
-        additional_dependencies:
-          - mypy
-          - pydantic-settings
-          - sqlmodel
-          - fastapi

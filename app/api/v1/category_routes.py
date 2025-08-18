@@ -1,6 +1,5 @@
-"""Category routes."""
-
 # mypy: disable-error-code=return-value
+"""API routes for category endpoints."""
 
 from typing import Annotated
 from uuid import UUID
@@ -26,7 +25,7 @@ async def create_category(
     data: CategoryCreate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> CategoryRead:
     """Create a new category."""
-    return await CategoryService.create(db, data)
+    return await CategoryService.create(data, db)
 
 
 @router.get("/{category_id}", response_model=CategoryRead)
@@ -34,7 +33,7 @@ async def get_category(
     category_id: UUID, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> CategoryRead:
     """Get a category by ID."""
-    return await CategoryService.get(db, category_id)
+    return await CategoryService.get(category_id, db)
 
 
 @router.put("/{category_id}", response_model=CategoryRead)
@@ -42,7 +41,7 @@ async def update_category(
     category_id: UUID, data: CategoryUpdate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> CategoryRead:
     """Update a category by ID."""
-    return await CategoryService.update(db, category_id, data)
+    return await CategoryService.update(category_id, data, db)
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -50,4 +49,4 @@ async def delete_category(
     category_id: UUID, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> None:
     """Delete a category by ID."""
-    await CategoryService.delete(db, category_id)
+    await CategoryService.delete(category_id, db)
