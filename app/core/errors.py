@@ -21,3 +21,9 @@ class BadRequestError(AppError):
     """Bad request error."""
 
     pass
+
+
+class UnauthorizedError(AppError):
+    """Unauthorized error."""
+
+    pass

@@ -3,7 +3,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.core.errors import BadRequestError, ConflictError, NotFoundError
+from app.core.errors import BadRequestError, ConflictError, NotFoundError, UnauthorizedError
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -23,3 +23,8 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_bad_request(_: Request, exc: BadRequestError) -> JSONResponse:
         """Handle bad request errors."""
         return JSONResponse(status_code=400, content={"detail": str(exc) or "Bad request"})
+
+    @app.exception_handler(UnauthorizedError)
+    async def handle_unauthorized(_: Request, exc: UnauthorizedError) -> JSONResponse:
+        """Handle unauthorized errors."""
+        return JSONResponse(status_code=401, content={"detail": str(exc) or "Unauthorized"})
