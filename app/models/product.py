@@ -8,6 +8,7 @@ from sqlmodel import Field, Relationship
 from app.models.common import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
+    from app.models.cart import CartItem
     from app.models.category import Category
 
 
@@ -23,3 +24,7 @@ class Product(UUIDMixin, TimestampMixin, table=True):
     category_id: UUID = Field(foreign_key="categories.id", nullable=False, ondelete="CASCADE")
 
     category: Optional["Category"] = Relationship(back_populates="products")
+
+    cart_items: list["CartItem"] = Relationship(
+        back_populates="product", sa_relationship_kwargs={"lazy": "selectin"}, passive_deletes=True
+    )
