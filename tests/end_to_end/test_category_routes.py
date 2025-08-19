@@ -20,11 +20,11 @@ async def create_category(client: AsyncClient, *, name: str):
 
 @pytest.mark.asyncio
 async def test_create_category_success(client: AsyncClient):
-    r = await create_category(client, name="Books")
+    r = await create_category(client, name="e-Books")
     assert r.status_code == 201, r.text
     body = r.json()
     assert "id" in body
-    assert body["name"] == "Books"
+    assert body["name"] == "e-Books"
 
 
 @pytest.mark.asyncio
