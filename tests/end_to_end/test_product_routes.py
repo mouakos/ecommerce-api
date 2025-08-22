@@ -1,4 +1,4 @@
-"""Test cases for product API routes (good and bad cases)."""
+"""End to end tests for product-related API endpoints."""
 
 from uuid import uuid4
 

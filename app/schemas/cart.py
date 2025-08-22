@@ -4,13 +4,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.models.common import TimestampMixin, UUIDMixin
+from app.schemas.common import TimestampMixin, UUIDMixin
 
 
-class CartReadItem(BaseModel):
+class CartReadItem(UUIDMixin):
     """Schema for reading cart items."""
 
-    id: UUID
     product_id: UUID
     quantity: int
     unit_price: float

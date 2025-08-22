@@ -30,7 +30,7 @@ async def login(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> Token:
     """Authenticate a user and return a JWT token."""
-    user = await AuthService.authenticate(db, form.username, form.password)
+    user = await AuthService.authenticate_user(db, form.username, form.password)
     token = create_access_token(subject=str(user.id))
     return Token(access_token=token)
 

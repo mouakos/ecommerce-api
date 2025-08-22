@@ -15,8 +15,8 @@ class Category(UUIDMixin, TimestampMixin, table=True):
 
     __tablename__ = "categories"
 
-    name: str = Field(index=True, unique=True, nullable=False)
+    name: str = Field(index=True, unique=True)
 
     products: list["Product"] = Relationship(
-        back_populates="category", sa_relationship_kwargs={"lazy": "selectin"}, passive_deletes=True
+        back_populates="category", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
     )

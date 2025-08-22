@@ -23,7 +23,7 @@ async def get_my_cart(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> CartRead:
     """Get or create a cart for the current user."""
-    return await CartService.get_or_create_for_user(current_user.id, db)
+    return await CartService.get_or_create_user_cart(current_user.id, db)
 
 
 @router.post("/items", response_model=CartRead)
@@ -33,7 +33,7 @@ async def add_item_to_my_cart(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> CartRead:
     """Add an item to the user's cart."""
-    return await CartService.add_item(current_user.id, data, db)
+    return await CartService.add_item_to_user_cart(current_user.id, data, db)
 
 
 @router.put("/items/{item_id}", response_model=CartRead)
@@ -44,7 +44,7 @@ async def update_my_cart_item(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> CartRead:
     """Update an item in the user's cart."""
-    return await CartService.update_item(current_user.id, item_id, data.quantity, db)
+    return await CartService.update_item_to_user_cart(current_user.id, item_id, data.quantity, db)
 
 
 @router.delete("/items/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -54,7 +54,7 @@ async def remove_my_cart_item(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
     """Remove an item from the user's cart."""
-    await CartService.remove_item(current_user.id, item_id, db)
+    await CartService.remove_item_from_user_cart(current_user.id, item_id, db)
 
 
 @router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
@@ -63,4 +63,4 @@ async def clear_my_cart(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> None:
     """Clear the current user's cart."""
-    await CartService.clear_cart(current_user.id, db)
+    await CartService.clear_user_cart(current_user.id, db)

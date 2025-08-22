@@ -1,4 +1,4 @@
-"""Test cases for cart routes."""
+"""End to end tests for cart-related API endpoints."""
 
 from uuid import uuid4
 
