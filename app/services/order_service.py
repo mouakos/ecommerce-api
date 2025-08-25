@@ -2,9 +2,8 @@
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import and_, desc
 
 from app.core.errors import BadRequestError, ConflictError, NotFoundError
 from app.models.order import Order, OrderItem
@@ -46,7 +45,7 @@ class OrderService:
             (
                 await db.execute(
                     select(Product)
-                    .where(Product.id.in_(product_ids))
+                    .where(Product.id.in_(product_ids))  # type: ignore[attr-defined]
                     .with_for_update()  # row-level locks
                 )
             )
@@ -104,7 +103,7 @@ class OrderService:
             list[Order]: The list of orders.
         """
         res = await db.execute(
-            select(Order).where(Order.user_id == user_id).order_by(desc(Order.created_at))
+            select(Order).where(Order.user_id == user_id).order_by(desc(Order.created_at))  # type: ignore[arg-type]
         )
 
         return list(res.scalars())
@@ -125,7 +124,7 @@ class OrderService:
             Order: The order.
         """
         res = await db.execute(
-            select(Order).where(and_(Order.id == order_id, Order.user_id == user_id))
+            select(Order).where((Order.id == order_id) & (Order.user_id == user_id))  # type: ignore[arg-type]
         )
         order = res.scalar_one_or_none()
         if not order:
