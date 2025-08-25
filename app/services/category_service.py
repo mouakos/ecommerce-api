@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import func, select
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.category import Category
@@ -14,17 +14,39 @@ class CategoryService:
     """Service for managing categories."""
 
     @staticmethod
-    async def list(db: AsyncSession) -> list[Category]:
+    async def list(
+        db: AsyncSession, *, limit: int, offset: int, search: str | None = None
+    ) -> tuple[list[Category], int]:
         """List all categories.
 
         Args:
             db (AsyncSession): The database session.
+            limit (int): The number of items per page.
+            offset (int): The offset for pagination.
+            search (str): The search term for category names.
 
         Returns:
-            list[Category]: A list of categories.
+            Tuple[list[Category], int]: A tuple containing the list of categories and the total count.
         """
-        res = await db.execute(select(Category).order_by(Category.name))
-        return list(res.scalars().all())
+        stmt = select(Category)
+
+        # total count
+        count_stmt = select(func.count()).select_from(Category)
+
+        # page items
+        stmt = select(Category).order_by(Category.name).limit(limit).offset(offset)
+        if search:
+            pattern = f"%{search.lower()}%"
+            stmt = stmt.where(func.lower(Category.name).like(pattern))
+            count_stmt = count_stmt.where(func.lower(Category.name).like(pattern))
+
+        # total
+        total = int((await db.execute(count_stmt)).scalar_one())
+
+        # items
+        res = await db.execute(stmt.order_by(Category.name).limit(limit).offset(offset))
+        items = list(res.scalars().all())
+        return items, total
 
     @staticmethod
     async def create(data: CategoryCreate, db: AsyncSession) -> Category:

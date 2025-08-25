@@ -23,7 +23,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 async def async_engine():
     """Create engine & schema once for the test session."""
     engine = create_async_engine(TEST_DB_URL, echo=False, future=True)
