@@ -18,28 +18,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python 3.12
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: 🐍 Set up Python 3.12
         uses: actions/setup-python@v3
         with:
           python-version: "3.12"
-      - name: Install dependencies
+          
+      - name: 📦 Install dependencies
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
-      - name: Lint (ruff)
+          
+      - name: 🧹 Lint (ruff)
         run: |
           ruff --version || true
           ruff check
           ruff format --check
-      - name: Type check (mypy)
+          
+      - name: 📝 Type check (mypy)
         run: |
           mypy --version || true
           mypy
-      - name: Test with pytest
+          
+      - name: ✅ Run pytest
         run: |
           pytest
-      - name: Upload HTML coverage report
+          
+      - name: 📊 Upload HTML coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
