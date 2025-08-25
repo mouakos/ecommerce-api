@@ -1,23 +1,47 @@
 """API routes for product endpoints."""
 
 # mypy: disable-error-code=return-value
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.schemas.common import Page
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services.product_service import ProductService
 
 router = APIRouter(prefix="/api/v1/products", tags=["Products"])
 
 
-@router.get("/", response_model=list[ProductRead])
-async def list_products(db: Annotated[AsyncSession, Depends(get_session)]) -> list[ProductRead]:
+@router.get("/", response_model=Page[ProductRead])
+async def list_products(
+    db: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    search: str | None = Query(None, description="Search name/description (case-insensitive)"),
+    category_id: UUID | None = None,
+    price_min: float | None = Query(None, ge=0),
+    price_max: float | None = Query(None, ge=0),
+    in_stock: bool | None = Query(None, description="True: stock>0, False: stock==0"),
+    order_by: Literal["name", "price", "created_at", "updated_at"] = Query("name"),
+    order_dir: Literal["asc", "desc"] = Query("asc"),
+) -> Page[ProductRead]:
     """List all products."""
-    return await ProductService.list(db)
+    items, total = await ProductService.list(
+        db,
+        limit=limit,
+        offset=offset,
+        search=search,
+        category_id=category_id,
+        price_min=price_min,
+        price_max=price_max,
+        in_stock=in_stock,
+        order_by=order_by,
+        order_dir=order_dir,
+    )
+    return Page[ProductRead](items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=ProductRead, status_code=status.HTTP_201_CREATED)

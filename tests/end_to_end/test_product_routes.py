@@ -13,9 +13,9 @@ CATEGORIES_BASE = "/api/v1/categories"
 
 
 @pytest.fixture
-async def category(client: AsyncClient):
+async def category(client: AsyncClient, *, name: str = None):
     # Create a category to attach products to
-    name = f"Cat-{uuid4().hex[:6]}"
+    name = name or f"Cat-{uuid4().hex[:6]}"
     r = await client.post(f"{CATEGORIES_BASE}/", json={"name": name})
     assert r.status_code == 201, r.text
     return r.json()  # {"id": "...", "name": "..."}
@@ -114,7 +114,7 @@ async def test_create_product_same_name_different_categories_success(
 async def test_list_products_empty(client: AsyncClient):
     r = await client.get(f"{PRODUCTS_BASE}/")
     assert r.status_code == 200
-    assert isinstance(r.json(), list)
+    assert isinstance(r.json()["items"], list)
 
 
 @pytest.mark.asyncio
@@ -123,8 +123,69 @@ async def test_list_products_after_creations(client: AsyncClient, category):
     await create_product(client, name="BBB", category_id=category["id"])
     r = await client.get(f"{PRODUCTS_BASE}/")
     assert r.status_code == 200
-    names = [p["name"] for p in r.json()]
+    names = [p["name"] for p in r.json()["items"]]
     assert "AAA" in names and "BBB" in names
+
+
+@pytest.mark.asyncio
+async def test_list_products_paged_and_filtered(client: AsyncClient, category, other_category):
+    await create_product(
+        client,
+        name="Phone",
+        category_id=category["id"],
+        price=99.0,
+        stock=5,
+        description="smart phone",
+    )
+    await create_product(
+        client,
+        name="Laptop",
+        category_id=category["id"],
+        price=899.0,
+        stock=0,
+        description="ultrabook",
+    )
+    await create_product(
+        client,
+        name="Novel",
+        category_id=other_category["id"],
+        price=15.0,
+        stock=10,
+        description="book",
+    )
+
+    # Basic page
+    r = await client.get(f"{PRODUCTS_BASE}/?limit=2&offset=0&sort=name")
+    assert r.status_code == 200
+    page = r.json()
+    assert page["limit"] == 2 and page["offset"] == 0
+    assert len(page["items"]) <= 2
+
+    # Filter by category
+    r_cat = await client.get(f"{PRODUCTS_BASE}/?category_id={category['id']}")
+    assert all(it["category_id"] == category["id"] for it in r_cat.json()["items"])
+
+    # Price range
+    r_price = await client.get(f"{PRODUCTS_BASE}/?price_min=20&price_max=200")
+    names = [it["name"] for it in r_price.json()["items"]]
+    assert "Phone" in names and "Novel" not in names
+
+    # In-stock only
+    r_stock = await client.get(f"{PRODUCTS_BASE}/?in_stock=true")
+    assert all(it["stock"] > 0 for it in r_stock.json()["items"])
+
+    # q search (name/description, case-insensitive)
+    r_q = await client.get(f"{PRODUCTS_BASE}/?q=BOOK")
+    names_q = [it["name"] for it in r_q.json()["items"]]
+    assert (
+        "Novel" in names_q or "Laptop" in names_q
+    )  # "book" in description of Novel, "ultrabook" in Laptop
+
+    # Sort descending by price
+    r_sort = await client.get(f"{PRODUCTS_BASE}/?sort=-price")
+    items = r_sort.json()["items"]
+    assert len(items) >= 2
+    assert items[0]["price"] >= items[1]["price"]
 
 
 # ------- Tests: GET -------

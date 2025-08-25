@@ -4,20 +4,27 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
+from app.schemas.common import Page
 from app.services.category_service import CategoryService
 
 router = APIRouter(prefix="/api/v1/categories", tags=["Categories"])
 
 
-@router.get("/", response_model=list[CategoryRead])
-async def list_categories(db: Annotated[AsyncSession, Depends(get_session)]) -> list[CategoryRead]:
+@router.get("/", response_model=Page[CategoryRead])
+async def list_categories(
+    db: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(10, ge=1, le=100, description="Items per page"),
+    offset: int = Query(0, ge=0, description="Offset for pagination"),
+    search: str | None = Query(None, description="Search by name (case-insensitive)"),
+) -> Page[CategoryRead]:
     """List all categories."""
-    return await CategoryService.list(db)
+    categories, total = await CategoryService.list(db, limit=limit, offset=offset, search=search)
+    return Page[CategoryRead](items=categories, total=total, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
