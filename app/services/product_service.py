@@ -96,17 +96,22 @@ class ProductService:
         if not db_product:
             raise NotFoundError("Product not found.")
 
-        for key, value in product.model_dump(exclude_unset=True).items():
-            setattr(db_product, key, value)
+        product_category = db_product.category_id
 
         # Ensure the category exists
-        _ = await CategoryService.get(db_product.category_id, db)
+        if product.category_id:
+            _ = await CategoryService.get(product.category_id, db)
+            product_category = product.category_id
 
-        existing_product = await ProductService.get_by_name_and_category(
-            db, db_product.name, db_product.category_id
-        )
-        if existing_product and existing_product.id != db_product.id:
-            raise ConflictError("Product with this name already exists in the category.")
+        if product.name:
+            existing_product = await ProductService.get_by_name_and_category(
+                db, product.name, product_category
+            )
+            if existing_product and existing_product.id != db_product.id:
+                raise ConflictError("Product with this name already exists in the category.")
+
+        for key, value in product.model_dump(exclude_unset=True).items():
+            setattr(db_product, key, value)
 
         await db.commit()
         await db.refresh(db_product)

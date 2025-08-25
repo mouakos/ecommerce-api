@@ -17,12 +17,12 @@ def utcnow() -> datetime:
 class TimestampMixin(SQLModel):
     """Mixin to add created_at and updated_at timestamps."""
 
-    created_at: datetime = Field(default_factory=utcnow, nullable=False)
+    created_at: datetime = Field(default_factory=utcnow)
 
-    updated_at: datetime = Field(default_factory=utcnow, nullable=False)
+    updated_at: datetime = Field(default_factory=utcnow)
 
 
 class UUIDMixin(SQLModel):
     """Mixin to add a UUID primary key."""
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    id: UUID = Field(default_factory=uuid4, primary_key=True)

@@ -3,7 +3,7 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlmodel import Field, Relationship
+from sqlmodel import Field, Relationship, UniqueConstraint
 
 from app.models.common import TimestampMixin, UUIDMixin
 
@@ -16,15 +16,16 @@ class Product(UUIDMixin, TimestampMixin, table=True):
     """Product model for storing product information."""
 
     __tablename__ = "products"
+    __table_args__ = (UniqueConstraint("name", "category_id"),)
 
-    name: str = Field()
+    name: str
     description: str | None = None
     price: float
     stock: int
-    category_id: UUID = Field(foreign_key="categories.id", nullable=False, ondelete="CASCADE")
+    category_id: UUID = Field(foreign_key="categories.id", ondelete="CASCADE")
 
     category: Optional["Category"] = Relationship(back_populates="products")
 
     cart_items: list["CartItem"] = Relationship(
-        back_populates="product", sa_relationship_kwargs={"lazy": "selectin"}, passive_deletes=True
+        back_populates="product", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
     )

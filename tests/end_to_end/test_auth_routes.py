@@ -1,4 +1,4 @@
-"""Integration tests for user authentication endpoints."""
+"""End to end tests for authentication-related API endpoints."""
 
 import pytest
 from httpx import AsyncClient

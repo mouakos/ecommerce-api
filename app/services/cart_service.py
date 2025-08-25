@@ -15,7 +15,7 @@ class CartService:
     """Service for managing shopping cart operations."""
 
     @staticmethod
-    async def get_for_user(user_id: UUID, db: AsyncSession) -> Cart | None:
+    async def get_user_cart(user_id: UUID, db: AsyncSession) -> Cart | None:
         """Get the cart for a specific user.
 
         Args:
@@ -29,17 +29,17 @@ class CartService:
         return res.scalar_one_or_none()
 
     @staticmethod
-    async def get_or_create_for_user(user_id: UUID, db: AsyncSession) -> Cart:
+    async def get_or_create_user_cart(user_id: UUID, db: AsyncSession) -> Cart:
         """Get or create a cart for a specific user.
 
         Args:
             user_id (UUID): The ID of the user to retrieve or create the cart for.
-            db (AsyncSession): The database session to use..
+            db (AsyncSession): The database session to use.
 
         Returns:
             Cart: The cart for the user.
         """
-        cart = await CartService.get_for_user(user_id, db)
+        cart = await CartService.get_user_cart(user_id, db)
         if cart:
             return cart
         cart = Cart(user_id=user_id)
@@ -50,22 +50,22 @@ class CartService:
         return cart
 
     @staticmethod
-    async def clear_cart(user_id: UUID, db: AsyncSession) -> None:
+    async def clear_user_cart(user_id: UUID, db: AsyncSession) -> None:
         """Clear the cart for a specific user.
 
         Args:
             user_id (UUID): The ID of the user to clear the cart for.
             db (AsyncSession): The database session to use.
         """
-        cart = await CartService.get_for_user(user_id, db)
+        cart = await CartService.get_user_cart(user_id, db)
         if not cart:
             return
         await db.delete(cart)
         await db.commit()
 
     @staticmethod
-    async def add_item(user_id: UUID, data: CartItemCreate, db: AsyncSession) -> Cart:
-        """Add an item to the cart.
+    async def add_item_to_user_cart(user_id: UUID, data: CartItemCreate, db: AsyncSession) -> Cart:
+        """Add an item to the user's cart.
 
         Args:
             user_id (UUID): The ID of the user who owns the cart.
@@ -79,7 +79,7 @@ class CartService:
         Returns:
             Cart : The updated cart.
         """
-        cart = await CartService.get_or_create_for_user(user_id, db)
+        cart = await CartService.get_or_create_user_cart(user_id, db)
 
         product = await ProductService.get(data.product_id, db)
 
@@ -109,10 +109,10 @@ class CartService:
         return cart
 
     @staticmethod
-    async def update_item(
+    async def update_item_to_user_cart(
         user_id: UUID, item_id: UUID, quantity: int | None, db: AsyncSession
     ) -> Cart:
-        """Update the quantity of an item in the cart.
+        """Update the quantity of an item in the user's cart.
 
         Args:
             user_id (UUID): The ID of the user who owns the cart.
@@ -127,7 +127,7 @@ class CartService:
         Returns:
             Cart: The updated cart.
         """
-        cart = await CartService.get_or_create_for_user(user_id, db)
+        cart = await CartService.get_or_create_user_cart(user_id, db)
 
         item = await db.get(CartItem, item_id)
         if not item or item.cart_id != cart.id:
@@ -152,8 +152,8 @@ class CartService:
         return cart
 
     @staticmethod
-    async def remove_item(user_id: UUID, item_id: UUID, db: AsyncSession) -> None:
-        """Remove an item from the cart.
+    async def remove_item_from_user_cart(user_id: UUID, item_id: UUID, db: AsyncSession) -> None:
+        """Remove an item from a user's cart.
 
         Args:
             user_id (UUID): The ID of the user who owns the cart.
@@ -163,7 +163,7 @@ class CartService:
         Raises:
             NotFoundError: If the cart or item is not found.
         """
-        cart = await CartService.get_for_user(user_id, db)
+        cart = await CartService.get_user_cart(user_id, db)
         if not cart:
             return
 

@@ -13,7 +13,7 @@ class AuthService:
     """Service for managing user authentication."""
 
     @staticmethod
-    async def get_by_email(db: AsyncSession, email: str) -> User | None:
+    async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
         """Get a user by email.
 
         Args:
@@ -37,7 +37,7 @@ class AuthService:
         Returns:
             User: The created user.
         """
-        existing_user = await AuthService.get_by_email(db, data.email)
+        existing_user = await AuthService.get_user_by_email(db, data.email)
         if existing_user:
             raise ConflictError("Email already registered.")
 
@@ -49,7 +49,7 @@ class AuthService:
         return user
 
     @staticmethod
-    async def authenticate(db: AsyncSession, email: str, password: str) -> User:
+    async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
         """Authenticate a user.
 
         Args:
@@ -63,7 +63,7 @@ class AuthService:
         Returns:
             User: The authenticated user.
         """
-        user = await AuthService.get_by_email(db, email)
+        user = await AuthService.get_user_by_email(db, email)
         if not user or not verify_password(password, user.hashed_password):
             raise BadRequestError("Invalid email or password.")
         return user

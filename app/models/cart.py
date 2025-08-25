@@ -19,7 +19,7 @@ class Cart(UUIDMixin, TimestampMixin, table=True):
     __tablename__ = "carts"
     user_id: UUID = Field(foreign_key="users.id", index=True, nullable=False, ondelete="CASCADE")
     items: list["CartItem"] = Relationship(
-        back_populates="cart", sa_relationship_kwargs={"lazy": "selectin"}, passive_deletes=True
+        back_populates="cart", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
     )
 
     user: "User" = Relationship(back_populates="cart")

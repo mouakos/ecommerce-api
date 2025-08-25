@@ -1,4 +1,4 @@
-"""Test cases for category routes."""
+"""End to end tests for category-related API endpoints."""
 
 from uuid import uuid4
 

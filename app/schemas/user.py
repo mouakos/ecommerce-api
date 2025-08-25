@@ -1,9 +1,9 @@
 """Schemas for user-related operations in the application."""
 
-from uuid import UUID
-
 from pydantic import EmailStr, Field
 from sqlmodel import SQLModel
+
+from app.schemas.common import UUIDMixin
 
 
 class UserCreate(SQLModel):
@@ -13,10 +13,9 @@ class UserCreate(SQLModel):
     password: str = Field(..., min_length=6)
 
 
-class UserRead(SQLModel):
+class UserRead(UUIDMixin):
     """Schema for reading user information."""
 
-    id: UUID
     email: str
     is_active: bool
 
