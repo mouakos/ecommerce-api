@@ -1,33 +1,99 @@
+# mypy: disable-error-code=arg-type
+
 """Service layer for product-related business logic in the ecommerce API."""
 
+from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import asc, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import and_
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.category_service import CategoryService
 
+OrderBy = Literal["name", "price", "created_at", "updated_at"]
+OrderDir = Literal["asc", "desc"]
+
 
 class ProductService:
     """Service for managing products."""
 
     @staticmethod
-    async def list(db: AsyncSession) -> list[Product]:
+    async def list(
+        db: AsyncSession,
+        limit: int,
+        offset: int,
+        search: str | None = None,
+        category_id: UUID | None = None,
+        price_min: float | None = None,
+        price_max: float | None = None,
+        in_stock: bool | None = None,
+        order_by: OrderBy = "name",
+        order_dir: OrderDir = "asc",
+    ) -> tuple[list[Product], int]:
         """List all products.
 
         Args:
             db (AsyncSession): The database session.
+            limit (int): The maximum number of products to return.
+            offset (int): The number of products to skip before starting to collect the result set.
+            search (str | None): A search term to filter products by name or description.
+            category_id (UUID | None): The ID of the category to filter products by.
+            price_min (float | None): The minimum price to filter products by.
+            price_max (float | None): The maximum price to filter products by.
+            in_stock (bool | None): Whether to filter products by stock availability.
+            order_by (OrderBy): The field to order the results by.
+            order_dir (OrderDir): The direction to order the results (ascending or descending).
 
         Returns:
             list[Product]: A list of all products.
         """
         stmt = select(Product)
-        result = await db.execute(stmt)
-        return list(result.scalars().all())
+        count_stmt = select(func.count()).select_from(Product)
+
+        # Filters
+        if search:
+            like = f"%{search.lower()}%"
+            cond = func.lower(Product.name).like(like) | func.lower(Product.description).like(like)
+            stmt = stmt.where(cond)
+            count_stmt = count_stmt.where(cond)
+
+        if category_id:
+            stmt = stmt.where(Product.category_id == category_id)
+            count_stmt = count_stmt.where(Product.category_id == category_id)
+
+        if price_min is not None:
+            stmt = stmt.where(Product.price >= price_min)
+            count_stmt = count_stmt.where(Product.price >= price_min)
+
+        if price_max is not None:
+            stmt = stmt.where(Product.price <= price_max)
+            count_stmt = count_stmt.where(Product.price <= price_max)
+
+        if in_stock is True:
+            stmt = stmt.where(Product.stock > 0)
+            count_stmt = count_stmt.where(Product.stock > 0)
+        elif in_stock is False:
+            stmt = stmt.where(Product.stock == 0)
+            count_stmt = count_stmt.where(Product.stock == 0)
+
+        # Sorting
+        order_col = {
+            "name": Product.name,
+            "price": Product.price,
+            "created_at": Product.created_at,
+        }[order_by]
+        order_col = desc(order_col) if order_dir == "desc" else asc(order_col)
+
+        # Total first
+        total = int((await db.execute(count_stmt)).scalar_one())
+
+        # Page
+        res = await db.execute(stmt.order_by(order_col).limit(limit).offset(offset))
+        items = list(res.scalars().all())
+        return items, total
 
     @staticmethod
     async def create(product: ProductCreate, db: AsyncSession) -> Product:
@@ -146,7 +212,7 @@ class ProductService:
             Product | None: The product if found, otherwise None.
         """
         stmt = select(Product).where(
-            and_(Product.name == product_name, Product.category_id == category_id)
+            (Product.name == product_name) & (Product.category_id == category_id)
         )
         result = await db.execute(stmt)
         return result.scalars().first()
