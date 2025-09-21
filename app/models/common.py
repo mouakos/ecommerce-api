@@ -16,7 +16,7 @@ def utcnow() -> datetime:
 
 def updated_at_column() -> Column[DateTime]:
     """Updated at timestamp column."""
-    return Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)
+    return Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False)  # type: ignore[arg-type]
 
 
 class TimestampMixin(SQLModel):
