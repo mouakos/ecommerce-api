@@ -1,12 +1,13 @@
 """Models for Order and OrderItem."""
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 from uuid import UUID
 
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship
 
-from app.models.common import TimestampMixin, UUIDMixin
+from app.models.common import TimestampMixin, UUIDMixin, utcnow
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -21,6 +22,10 @@ class Order(UUIDMixin, TimestampMixin, table=True):
     number: str = Field(index=True, unique=True, description="Public order number")
     status: str = Field(default="created")  # created, paid, cancelled
     total_amount: float
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False),
+    )
 
     items: list["OrderItem"] = Relationship(
         back_populates="order", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True

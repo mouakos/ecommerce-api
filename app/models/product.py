@@ -1,11 +1,12 @@
 """Product model definitions for the ecommerce API."""
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 from uuid import UUID
 
-from sqlmodel import Field, Relationship, UniqueConstraint
+from sqlmodel import Column, DateTime, Field, Relationship, UniqueConstraint
 
-from app.models.common import TimestampMixin, UUIDMixin
+from app.models.common import TimestampMixin, UUIDMixin, utcnow
 
 if TYPE_CHECKING:
     from app.models.cart import CartItem
@@ -22,6 +23,10 @@ class Product(UUIDMixin, TimestampMixin, table=True):
     description: str | None = None
     price: float
     stock: int
+    updated_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False),
+    )
     category_id: UUID = Field(foreign_key="categories.id", ondelete="CASCADE")
 
     category: Optional["Category"] = Relationship(back_populates="products")
