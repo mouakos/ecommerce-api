@@ -19,8 +19,6 @@ class TimestampMixin(SQLModel):
 
     created_at: datetime = Field(default_factory=utcnow)
 
-    updated_at: datetime = Field(default_factory=utcnow)
-
 
 class UUIDMixin(SQLModel):
     """Mixin to add a UUID primary key."""
