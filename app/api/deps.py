@@ -1,6 +1,6 @@
 """API Routes dependencies."""
 
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 from fastapi import Depends
@@ -41,3 +41,18 @@ async def get_current_user(
     if not user:
         raise UnauthorizedError("Invalid or expired token.")
     return user
+
+
+class RoleChecker:
+    """Dependency to check if the current user has one of the allowed roles."""
+
+    def __init__(self, allowed_roles: list[str]) -> None:
+        """Initialize the RoleChecker with allowed roles."""
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, current_user: Annotated[User, Depends(get_current_user)]) -> Any:  # noqa: ANN401
+        """Check if the current user has one of the allowed roles."""
+        if current_user.role in self.allowed_roles:
+            return True
+
+        raise UnauthorizedError("Insufficient permissions.")

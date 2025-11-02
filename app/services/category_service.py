@@ -68,7 +68,7 @@ class CategoryService:
 
         new_category = Category(**data.model_dump())
         db.add(new_category)
-        await db.commit()
+        await db.flush()
         await db.refresh(new_category)
         return new_category
 
@@ -119,7 +119,7 @@ class CategoryService:
         for k, v in data.model_dump(exclude_unset=True).items():
             setattr(category, k, v)
 
-        await db.commit()
+        await db.flush()
         await db.refresh(category)
         return category
 
@@ -141,7 +141,7 @@ class CategoryService:
         if category is None:
             raise NotFoundError("Category not found.")
         await db.delete(category)
-        await db.commit()
+        await db.flush()
 
     @staticmethod
     async def get_by_name(name: str, db: AsyncSession) -> Category | None:

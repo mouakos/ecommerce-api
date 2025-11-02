@@ -36,7 +36,7 @@ class OrderService:
         # 1) Load cart with items
         cart = await CartService.get_user_cart(user_id, db)
 
-        if not cart:
+        if not cart or not cart.items:
             raise BadRequestError("Cart is empty.")
 
         # 2) Lock all product rows we'll touch
@@ -86,7 +86,7 @@ class OrderService:
         # Delete the cart (cascade removes items)
         await db.delete(cart)
 
-        await db.commit()
+        await db.flush()
         # Reload with items for response
         await db.refresh(order)
         return order

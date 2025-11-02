@@ -5,22 +5,17 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
+from tests.factories import CategoryFactory
+
 BASE = "/api/v1/categories"
-
-
-# ---------- Helpers ----------
-
-
-async def create_category(client: AsyncClient, *, name: str):
-    return await client.post(f"{BASE}/", json={"name": name})
 
 
 # ---------- CREATE ----------
 
 
 @pytest.mark.asyncio
-async def test_create_category_success(client: AsyncClient):
-    r = await create_category(client, name="e-Books")
+async def test_create_category_success(auth_admin_client: AsyncClient):
+    r = await auth_admin_client.post(f"{BASE}/", json={"name": "e-Books"})
     assert r.status_code == 201, r.text
     body = r.json()
     assert "id" in body
@@ -28,21 +23,21 @@ async def test_create_category_success(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_create_category_validation_errors(client: AsyncClient):
+async def test_create_category_validation_errors(auth_admin_client: AsyncClient):
     # Missing name
-    r = await client.post(f"{BASE}/", json={})
+    r = await auth_admin_client.post(f"{BASE}/", json={})
     assert r.status_code == 422
 
     # Too short name (if you have min_length=2 on the field)
-    r = await create_category(client, name="A")
+    r = await auth_admin_client.post(f"{BASE}/", json={"name": "A"})
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_create_category_duplicate_name_conflict(client: AsyncClient):
+async def test_create_category_duplicate_name_conflict(auth_admin_client: AsyncClient):
     # If you added a unique index on 'name', the second create should fail.
-    r1 = await create_category(client, name="UniqueCat")
-    r2 = await create_category(client, name="UniqueCat")
+    r1 = await auth_admin_client.post(f"{BASE}/", json={"name": "UniqueCat"})
+    r2 = await auth_admin_client.post(f"{BASE}/", json={"name": "UniqueCat"})
     assert r1.status_code == 201, r1.text
     assert r2.status_code == 409, r2.text
 
@@ -52,10 +47,8 @@ async def test_create_category_duplicate_name_conflict(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_pagination_basic_shape_and_ordering(client: AsyncClient):
-    # Seed predictable names so alphabetical order is known
-    names = [f"Cat-{i:02d}" for i in range(15)]
-    for n in names:
-        await create_category(client, name=n)
+    # Create 15 categories
+    CategoryFactory.create_batch(15)
 
     r1 = await client.get(f"{BASE}/?limit=5&offset=0")
     assert r1.status_code == 200
@@ -76,10 +69,7 @@ async def test_pagination_basic_shape_and_ordering(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_last_partial_page_and_empty_page(client: AsyncClient):
-    # 13 items total -> pages of 5: 5,5,3, then empty
-    # (Re-seed only if your test DB resets per test; otherwise ensure at least 13 exist)
-    for i in range(13):
-        await create_category(client, name=f"P-{i:02d}")
+    CategoryFactory.create_batch(13)
 
     r_full = await client.get(f"{BASE}/?limit=5&offset=10")
     assert r_full.status_code == 200
@@ -102,9 +92,9 @@ async def test_limit_and_offset_guards(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_pagination_with_search(client: AsyncClient):
     # Ensure both matching and non-matching names exist
-    await create_category(client, name="Books")
-    await create_category(client, name="Board Games")
-    await create_category(client, name="Electronics")
+    CategoryFactory.create(name="Books")
+    CategoryFactory.create(name="Board Games")
+    CategoryFactory.create(name="Electronics")
 
     # Search "bo" -> Books, Board Games (case-insensitive)
     r = await client.get(f"{BASE}/?search=Bo&limit=10&offset=0")
@@ -120,9 +110,7 @@ async def test_pagination_with_search(client: AsyncClient):
 @pytest.mark.parametrize("limit,offset", [(1, 0), (2, 2), (3, 3), (5, 5)])
 async def test_no_gaps_no_dupes_across_pages(client: AsyncClient, limit, offset):
     # Create 10 predictable categories
-    base = [f"S-{i:02d}" for i in range(10)]
-    for n in base:
-        await create_category(client, name=n)
+    CategoryFactory.create_batch(10)
 
     # Collect two adjacent slices and ensure union equals the combined slice
     r_a = await client.get(f"{BASE}/?limit={limit}&offset={offset}")
@@ -142,11 +130,10 @@ async def test_list_categories_empty(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_list_categories_after_creations(client: AsyncClient):
-    await create_category(client, name=f"Cat-{uuid4().hex[:6]}")
-    await create_category(client, name=f"Cat-{uuid4().hex[:6]}")
+    CategoryFactory.create_batch(2)
     r = await client.get(f"{BASE}/")
     assert r.status_code == 200
-    assert len(r.json()["items"]) >= 2
+    assert len(r.json()["items"]) == 2
 
 
 # ---------- GET ----------
@@ -154,8 +141,8 @@ async def test_list_categories_after_creations(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_get_category_success(client: AsyncClient):
-    created = (await create_category(client, name="GetMe")).json()
-    r = await client.get(f"{BASE}/{created['id']}")
+    created = CategoryFactory.create(name="GetMe")
+    r = await client.get(f"{BASE}/{created.id}")
     assert r.status_code == 200
     assert r.json()["name"] == "GetMe"
 
@@ -171,10 +158,10 @@ async def test_get_category_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_category_success(client: AsyncClient):
-    created = (await create_category(client, name="OldName")).json()
-    r = await client.put(
-        f"{BASE}/{created['id']}",
+async def test_update_category_success(auth_admin_client: AsyncClient):
+    created = CategoryFactory.create(name="OldName")
+    r = await auth_admin_client.put(
+        f"{BASE}/{created.id}",
         json={"name": "NewName"},
     )
     assert r.status_code == 200
@@ -182,19 +169,19 @@ async def test_update_category_success(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_category_not_found(client: AsyncClient):
-    r = await client.put(f"{BASE}/{uuid4()}", json={"name": "Whatever"})
+async def test_update_category_not_found(auth_admin_client: AsyncClient):
+    r = await auth_admin_client.put(f"{BASE}/{uuid4()}", json={"name": "Whatever"})
     assert r.status_code == 404
     assert r.json()["detail"] == "Category not found."
 
 
 @pytest.mark.asyncio
-async def test_update_category_duplicate_name_conflict(client: AsyncClient):
-    _ = (await create_category(client, name="Electronics")).json()
-    b = (await create_category(client, name="Decoration")).json()
+async def test_update_category_duplicate_name_conflict(auth_admin_client: AsyncClient):
+    CategoryFactory.create(name="Electronics")
+    b = CategoryFactory.create(name="Decoration")
 
     # Try renaming Decoration -> Electronics
-    r = await client.put(f"{BASE}/{b['id']}", json={"name": "Electronics"})
+    r = await auth_admin_client.put(f"{BASE}/{b.id}", json={"name": "Electronics"})
     assert r.status_code == 409
     assert r.json()["detail"] == "Category with this name already exists."
 
@@ -203,18 +190,18 @@ async def test_update_category_duplicate_name_conflict(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_delete_category_success_then_404_on_get(client: AsyncClient):
-    created = (await create_category(client, name="ToDelete")).json()
-    r_del = await client.delete(f"{BASE}/{created['id']}")
+async def test_delete_category_success_then_404_on_get(auth_admin_client: AsyncClient):
+    created = CategoryFactory.create(name="ToDelete")
+    r_del = await auth_admin_client.delete(f"{BASE}/{created.id}")
     assert r_del.status_code == 204
 
-    r_get = await client.get(f"{BASE}/{created['id']}")
+    r_get = await auth_admin_client.get(f"{BASE}/{created.id}")
     assert r_get.status_code == 404
     assert r_get.json()["detail"] == "Category not found."
 
 
 @pytest.mark.asyncio
-async def test_delete_category_not_found(client: AsyncClient):
-    r = await client.delete(f"{BASE}/{uuid4()}")
+async def test_delete_category_not_found(auth_admin_client: AsyncClient):
+    r = await auth_admin_client.delete(f"{BASE}/{uuid4()}")
     assert r.status_code == 404
     assert r.json()["detail"] == "Category not found."

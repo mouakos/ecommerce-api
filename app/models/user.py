@@ -19,6 +19,7 @@ class User(UUIDMixin, TimestampMixin, table=True):
     email: str = Field(index=True, unique=True)
     hashed_password: str = Field(exclude=True)
     is_active: bool = Field(default=True)
+    role: str = Field(default="user")
     updated_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False),

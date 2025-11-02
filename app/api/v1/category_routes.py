@@ -7,12 +7,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import RoleChecker
 from app.db.session import get_session
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.schemas.common import Page
 from app.services.category_service import CategoryService
 
 router = APIRouter(prefix="/api/v1/categories", tags=["Categories"])
+role_checker = Depends(RoleChecker(["admin"]))
 
 
 @router.get("/", response_model=Page[CategoryRead])
@@ -27,7 +29,12 @@ async def list_categories(
     return Page[CategoryRead](items=categories, total=total, limit=limit, offset=offset)
 
 
-@router.post("/", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=CategoryRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[role_checker],
+)
 async def create_category(
     data: CategoryCreate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> CategoryRead:
@@ -43,7 +50,7 @@ async def get_category(
     return await CategoryService.get(category_id, db)
 
 
-@router.put("/{category_id}", response_model=CategoryRead)
+@router.put("/{category_id}", response_model=CategoryRead, dependencies=[role_checker])
 async def update_category(
     category_id: UUID, data: CategoryUpdate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> CategoryRead:
@@ -51,7 +58,9 @@ async def update_category(
     return await CategoryService.update(category_id, data, db)
 
 
-@router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{category_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[role_checker]
+)
 async def delete_category(
     category_id: UUID, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> None:

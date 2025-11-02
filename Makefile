@@ -21,8 +21,11 @@ help: ## Show available commands
 install: ## Install dependencies
 	pip install -r requirements-dev.txt
 
-dev: ## Run the application
+dev: ## Run the application in development mode
 	uvicorn app.main:app --reload
+
+run: ## Run the application 
+	uvicorn app.main:app
 
 test: ## Run tests with pytest
 	pytest
@@ -42,7 +45,7 @@ up: ## Start the docker containers
 down: ## Stop the docker containers
 	docker compose down
 
-reset-db: ## Drop & recreate database (dev only)
+reset-db: ## Drop and recreate database (dev only)
 	docker compose down -v
 	docker compose up -d db
 	alembic upgrade head

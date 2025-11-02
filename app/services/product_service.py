@@ -120,7 +120,7 @@ class ProductService:
 
         db_product = Product(**product.model_dump())
         db.add(db_product)
-        await db.commit()
+        await db.flush()
         await db.refresh(db_product)
         return db_product
 
@@ -179,7 +179,7 @@ class ProductService:
         for key, value in product.model_dump(exclude_unset=True).items():
             setattr(db_product, key, value)
 
-        await db.commit()
+        await db.flush()
         await db.refresh(db_product)
         return db_product
 
@@ -195,7 +195,7 @@ class ProductService:
         if not db_product:
             raise NotFoundError("Product not found.")
         await db.delete(db_product)
-        await db.commit()
+        await db.flush()
 
     @staticmethod
     async def get_by_name_and_category(

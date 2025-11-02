@@ -16,11 +16,15 @@ AsyncSessionLocal = async_sessionmaker(bind=async_engine, autoflush=False, expir
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get a database session for the duration of a request."""
     async with AsyncSessionLocal() as session:
-        yield session
+        try:
+            yield session
+            await session.commit()
+        finally:
+            await session.close()
 
 
 # Optional: create tables for quick local dev (use Alembic in real flows)
-async def init_models() -> None:
+async def init_db() -> None:
     """Create database tables."""
     async with async_engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
