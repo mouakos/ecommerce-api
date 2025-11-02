@@ -8,14 +8,22 @@ class Settings(BaseSettings):
     """Environment variables for the application."""
 
     # database
-    DATABASE_URL: str = Field(default="", description="Database connection URL")
+    database_url: str = Field(
+        "sqlite+aiosqlite:///:memory:", description="Database connection URL", alias="DATABASE_URL"
+    )
 
     # auth
-    SECRET_KEY: str = Field(default="", description="Secret key for JWT signing")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
-        default=60, description="Access token expiration time in minutes"
+    secret_key: str = Field(
+        "dev-secret", description="Secret key for JWT signing", alias="SECRET_KEY"
     )
-    JWT_ALGORITHM: str = Field(default="HS256", description="JWT signing algorithm")
+    access_token_expire_minutes: int = Field(
+        default=60,
+        description="Access token expiration time in minutes",
+        alias="ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    jwt_algorithm: str = Field(
+        default="HS256", description="JWT signing algorithm", alias="JWT_ALGORITHM"
+    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

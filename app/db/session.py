@@ -8,7 +8,7 @@ from sqlmodel import SQLModel
 from app.core.config import settings
 from app.models import *  # noqa: F403
 
-async_engine = create_async_engine(settings.DATABASE_URL, echo=True)
+async_engine = create_async_engine(settings.database_url, echo=True)
 
 AsyncSessionLocal = async_sessionmaker(bind=async_engine, autoflush=False, expire_on_commit=False)
 

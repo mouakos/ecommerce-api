@@ -14,8 +14,8 @@ from app.main import app
 from app.models.user import User
 from tests.factories import BaseFactory
 
-# Use file-based SQLite to avoid multiple connections losing tables in memory
-TEST_DB_URL = "sqlite+aiosqlite:///./test.db"
+# Use in-memory SQLite for tests
+TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture(scope="session")

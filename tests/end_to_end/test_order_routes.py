@@ -17,7 +17,7 @@ def get_user_id_from_token(auth_client: AsyncClient) -> UUID:
 
     auth_header = auth_client.headers.get("Authorization")
     token = auth_header.split(" ")[1]  # Remove "Bearer " prefix
-    payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
     return UUID(payload.get("sub"))  # or another claim, depending on your implementation
 
 
