@@ -1,81 +1,118 @@
 # E-Commerce-API
-E-commerce API built with FastAPI & SQLModel — A clean, production-ready REST API for managing products, categories, and orders. Includes async PostgreSQL integration, Alembic migrations, Dockerized database, GitHub Actions CI/CD, and pre-commit hooks. Designed for scalability and best practices in modern Python backend development.
+E-commerce API built with FastAPI & SQLModel — A clean, production-ready REST API for managing products, categories, orders, carts, and user reviews. Includes async PostgreSQL integration, Alembic migrations, Dockerized database, GitHub Actions CI/CD, and pre-commit hooks. Features robust authentication (JWT), user roles (admin/user). Designed for scalability, security, and best practices in modern Python backend development.
 
 ## ✨Features
 
-- FastAPI for high-performance async APIs
-
-- SQLModel + PostgreSQL for ORM and data modeling
-
-- Alembic migrations for database schema management
-
-- Docker & docker-compose for containerized services (PostgreSQL + pgAdmin)
-
-- GitHub Actions CI for linting, type-checking, migrations, and tests
-
-- Pre-commit hooks for code quality (Ruff, mypy)
-
-- Modular folder structure for scalability and maintainability
+- JWT authentication and user roles (admin/user)
+- Product, category, order, cart, and review management
+- Full async support
 
 ## 🛠 Tech Stack
 
 - Python 3.12
-
 - FastAPI
-
 - SQLModel
-
 - PostgreSQL (asyncpg)
-
 - Alembic
-
 - Docker & docker-compose
-
 - GitHub Actions
+- httpx & pytest (for testing)
+- pre-commit (for code quality)
+- JWT (for authentication)
+- Ruff, mypy (if you use them for linting/type-checking)
 
+## ⚡ Prerequisites
+
+- Python 3.12+
+- Docker
+- (Optional) Git
+- (Optional) Make
+  
 ## 🚀 Getting Started
-1. Clone repo
+1. Clone repo:
 ```bash
-git clone https://github.com/yourusername/ecommerce-api.git
+git clone https://github.com/mouakos/ecommerce-api.git
 cd ecommerce-api
 ```
 
-2. Copy env and start DB
+2. Create .env file:
 ```bash
-cp .env.example .env
+cp .env.template .env
 ```
 
-3. Start database
+3. Create a virtual environment:
+```bash
+python -m venv .venv
+```
+
+4. Activate the virtual environment:
+On Windows:
+```bash
+.venv\Scripts\activate
+```
+
+On macOS and Linux:
+```bash
+source .venv/bin/activate
+```
+
+5. Install dependencies:
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+```
+
+## 🚦Usage
+1. Start database
 ```bash
 docker compose up -d db pgadmin
 ```
 
-3. Install deps
-```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt -r requirements-dev.txt
-```
-
-4. Run migrations
+2. Run alembic migrations:
 ```bash
 alembic upgrade head
 ```
 
-5. Start API
+This will apply any pending database migrations.
+
+3. Start the FastAPI development server:
 ```bash
 uvicorn app.main:app --reload
 ```
 
+The API will be accessible at http://127.0.0.1:8000/
+
+4. Access the Swagger UI and ReDoc:
+    
+    - Swagger UI: http://127.0.0.1:8000/api/v1/docs/
+    - ReDoc: http://127.0.0.1:8000//api/v1/redoc/
+
+
 ## 🧪 Running Tests
+
 ```bash
 pytest
 ```
 
+## 🛠️ Makefile Commands
+
+You can use the provided `Makefile` to simplify common development tasks:
+
+```bash
+make help         # List all available make commands
+make dev          # Start the development server
+make test         # Run the test suite
+make mig.new MSG="message"  # Create a new Alembic migration
+make migrate      # Apply all migrations
+```
+See the [Makefile](/Makefile) for more commands and details.
+
+## 🌐 API Endpoints
+![API Endpoints](endpoints.png)
+
 ## 🧩 ERD (Entity-Relationship Diagram)
 ```mermaid
 erDiagram
-    USER ||--o{ CART : "owns"
+    USER ||--|| CART : "owns"
     USER ||--o{ ORDER : "places"
 
     CATEGORY ||--o{ PRODUCT : "has many"
@@ -89,6 +126,8 @@ erDiagram
         UUID id PK
         string email UK
         string hashed_password
+        string role
+        boolean is_active
         timestamp created_at
         timestamp updated_at
     }
@@ -104,12 +143,10 @@ erDiagram
     PRODUCT {
         UUID id PK
         string name
-        string sku UK
-        text description
+        string description
         numeric price
         int stock
         UUID category_id FK
-        boolean is_active
         timestamp created_at
         timestamp updated_at
     }
@@ -127,7 +164,6 @@ erDiagram
         UUID product_id FK
         int quantity
         numeric unit_price
-        numeric subtotal
         timestamp created_at
         timestamp updated_at
     }
@@ -135,8 +171,9 @@ erDiagram
     ORDER {
         UUID id PK
         UUID user_id FK
-        string status "pending|paid|shipped|cancelled"
-        numeric total
+        string number UK
+        string status "created|paid|cancelled"
+        numeric total_amount
         timestamp created_at
         timestamp updated_at
     }
@@ -147,10 +184,12 @@ erDiagram
         UUID product_id FK
         int quantity
         numeric unit_price
-        numeric subtotal
     }
-
 ```
 
+## 🤝 Contributing
+Feel free to contribute to the project. Fork the repository, make changes, and submit a pull request.
+
 ## 📜 License
-This project is licensed under the MIT License. See [LICENCE](/LICENSE) for details.
+This project is licensed under the MIT License. See [LICENSE](/LICENSE) for details.
+
