@@ -1,14 +1,15 @@
 help: ## Show available commands
 	@echo Available commands:
 	@echo   install       - Install dependencies
-	@echo   dev           - Run the application
+	@echo   dev           - Run the application in development mode
+	@echo   run           - Run the application
 	@echo   test          - Run tests
 	@echo   lint          - Lint the code
 	@echo   fmt           - Format the code
 	@echo   precommit     - Run pre-commit hooks on all files
 	@echo   up            - Start db containers
 	@echo   down          - Stop containers
-	@echo   reset-db      - Drop & recreate database (dev only)
+	@echo   reset-db      - Drop and recreate database (dev only)
 	@echo   mig.new       - Create a new migration (MSG=...)
 	@echo   mig.up        - Apply migrations
 	@echo   mig.down      - Roll back last migration
@@ -21,8 +22,11 @@ help: ## Show available commands
 install: ## Install dependencies
 	pip install -r requirements-dev.txt
 
-dev: ## Run the application
+dev: ## Run the application in development mode
 	uvicorn app.main:app --reload
+
+run: ## Run the application 
+	uvicorn app.main:app
 
 test: ## Run tests with pytest
 	pytest
@@ -42,7 +46,7 @@ up: ## Start the docker containers
 down: ## Stop the docker containers
 	docker compose down
 
-reset-db: ## Drop & recreate database (dev only)
+reset-db: ## Drop and recreate database (dev only)
 	docker compose down -v
 	docker compose up -d db
 	alembic upgrade head

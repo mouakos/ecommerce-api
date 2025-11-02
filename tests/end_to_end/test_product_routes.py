@@ -5,28 +5,9 @@ from uuid import uuid4
 import pytest
 from httpx import AsyncClient
 
-PRODUCTS_BASE = "/api/v1/products"
-CATEGORIES_BASE = "/api/v1/categories"
+from tests.factories import CategoryFactory, ProductFactory
 
-
-# ------- Helpers / Fixtures -------
-
-
-@pytest.fixture
-async def category(client: AsyncClient, *, name: str = None):
-    # Create a category to attach products to
-    name = name or f"Cat-{uuid4().hex[:6]}"
-    r = await client.post(f"{CATEGORIES_BASE}/", json={"name": name})
-    assert r.status_code == 201, r.text
-    return r.json()  # {"id": "...", "name": "..."}
-
-
-@pytest.fixture
-async def other_category(client: AsyncClient):
-    name = f"Cat-{uuid4().hex[:6]}"
-    r = await client.post(f"{CATEGORIES_BASE}/", json={"name": name})
-    assert r.status_code == 201, r.text
-    return r.json()
+BASE = "/api/v1/products"
 
 
 async def create_product(
@@ -45,64 +26,81 @@ async def create_product(
         "stock": stock,
         "category_id": category_id,
     }
-    return await client.post(f"{PRODUCTS_BASE}/", json=payload)
+    return await client.post(f"{BASE}/", json=payload)
 
 
 # ------- Tests: CREATE -------
 
 
 @pytest.mark.asyncio
-async def test_create_product_success(client: AsyncClient, category):
-    r = await create_product(client, name="Phone", category_id=category["id"])
+async def test_create_product_success(auth_admin_client: AsyncClient, db_session):
+    category = CategoryFactory()
+    await db_session.flush()
+    r = await create_product(auth_admin_client, name="Phone", category_id=str(category.id))
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["name"] == "Phone"
-    assert body["category_id"] == category["id"]
+    assert body["category_id"] == str(category.id)
     assert body["price"] == 10.0
     assert body["stock"] == 5
     assert "id" in body
 
 
 @pytest.mark.asyncio
-async def test_create_product_validation_errors(client: AsyncClient, category):
+async def test_create_product_validation_errors(auth_admin_client: AsyncClient, db_session):
+    category = CategoryFactory()
+    await db_session.flush()
     # Missing required field (price)
     bad = {
         "name": "NoPrice",
         "stock": 3,
-        "category_id": category["id"],
+        "category_id": str(category.id),
     }
-    r = await client.post(f"{PRODUCTS_BASE}/", json=bad)
+    r = await auth_admin_client.post(f"{BASE}/", json=bad)
     assert r.status_code == 422  # Pydantic validation
 
     # Negative price
-    r = await create_product(client, name="BadPrice", category_id=category["id"], price=-1.0)
+    r = await create_product(
+        auth_admin_client, name="BadPrice", category_id=str(category.id), price=-1.0
+    )
     assert r.status_code == 422
 
     # Negative stock
-    r = await create_product(client, name="BadStock", category_id=category["id"], stock=-3)
+    r = await create_product(
+        auth_admin_client, name="BadStock", category_id=str(category.id), stock=-3
+    )
     assert r.status_code == 422
 
     # Too short name
-    r = await create_product(client, name="A", category_id=category["id"])
+    r = await create_product(auth_admin_client, name="A", category_id=str(category.id))
     assert r.status_code == 422
 
 
 @pytest.mark.asyncio
-async def test_create_product_duplicate_name_same_category_conflict(client: AsyncClient, category):
-    r1 = await create_product(client, name="Duplicated", category_id=category["id"])
+async def test_create_product_duplicate_name_same_category_conflict(
+    auth_admin_client: AsyncClient, db_session
+):
+    category = CategoryFactory()
+    await db_session.flush()
+    r1 = await create_product(auth_admin_client, name="Duplicated", category_id=str(category.id))
     assert r1.status_code == 201, r1.text
 
-    r2 = await create_product(client, name="Duplicated", category_id=category["id"])
+    r2 = await create_product(auth_admin_client, name="Duplicated", category_id=str(category.id))
     assert r2.status_code == 409
     assert r2.json()["detail"] == "Product with this name already exists in the category."
 
 
 @pytest.mark.asyncio
 async def test_create_product_same_name_different_categories_success(
-    client: AsyncClient, category, other_category
+    auth_admin_client: AsyncClient, db_session
 ):
-    r1 = await create_product(client, name="SharedName", category_id=category["id"])
-    r2 = await create_product(client, name="SharedName", category_id=other_category["id"])
+    category = CategoryFactory()
+    other_category = CategoryFactory()
+    await db_session.flush()
+    r1 = await create_product(auth_admin_client, name="SharedName", category_id=str(category.id))
+    r2 = await create_product(
+        auth_admin_client, name="SharedName", category_id=str(other_category.id)
+    )
     assert r1.status_code == 201, r1.text
     assert r2.status_code == 201, r2.text
 
@@ -112,77 +110,61 @@ async def test_create_product_same_name_different_categories_success(
 
 @pytest.mark.asyncio
 async def test_list_products_empty(client: AsyncClient):
-    r = await client.get(f"{PRODUCTS_BASE}/")
+    r = await client.get(f"{BASE}/")
     assert r.status_code == 200
     assert isinstance(r.json()["items"], list)
 
 
 @pytest.mark.asyncio
-async def test_list_products_after_creations(client: AsyncClient, category):
-    await create_product(client, name="AAA", category_id=category["id"])
-    await create_product(client, name="BBB", category_id=category["id"])
-    r = await client.get(f"{PRODUCTS_BASE}/")
+async def test_list_products_after_creations(client: AsyncClient, db_session):
+    ProductFactory.create(name="AAA")
+    ProductFactory.create(name="BBB")
+    await db_session.flush()
+
+    r = await client.get(f"{BASE}/")
     assert r.status_code == 200
     names = [p["name"] for p in r.json()["items"]]
     assert "AAA" in names and "BBB" in names
 
 
 @pytest.mark.asyncio
-async def test_list_products_paged_and_filtered(client: AsyncClient, category, other_category):
-    await create_product(
-        client,
-        name="Phone",
-        category_id=category["id"],
-        price=99.0,
-        stock=5,
-        description="smart phone",
-    )
-    await create_product(
-        client,
-        name="Laptop",
-        category_id=category["id"],
-        price=899.0,
-        stock=0,
-        description="ultrabook",
-    )
-    await create_product(
-        client,
-        name="Novel",
-        category_id=other_category["id"],
-        price=15.0,
-        stock=10,
-        description="book",
-    )
+async def test_list_products_paged_and_filtered(client: AsyncClient, db_session):
+    category = CategoryFactory()
+    other_category = CategoryFactory()
+    ProductFactory(name="Phone", price=99.0, stock=5, description="smart phone", category=category)
+    ProductFactory(name="Laptop", price=899.0, stock=0, description="ultrabook", category=category)
+    ProductFactory(name="Novel", price=15.0, stock=10, description="book", category=other_category)
+    await db_session.flush()
 
     # Basic page
-    r = await client.get(f"{PRODUCTS_BASE}/?limit=2&offset=0&sort=name")
+    r = await client.get(f"{BASE}/?limit=2&offset=0&sort=name")
     assert r.status_code == 200
     page = r.json()
     assert page["limit"] == 2 and page["offset"] == 0
     assert len(page["items"]) <= 2
 
     # Filter by category
-    r_cat = await client.get(f"{PRODUCTS_BASE}/?category_id={category['id']}")
-    assert all(it["category_id"] == category["id"] for it in r_cat.json()["items"])
+    r_cat = await client.get(f"{BASE}/?category_id={category.id}")
+    assert all(it["category_id"] == str(category.id) for it in r_cat.json()["items"])
 
     # Price range
-    r_price = await client.get(f"{PRODUCTS_BASE}/?price_min=20&price_max=200")
+    r_price = await client.get(f"{BASE}/?price_min=20&price_max=200")
     names = [it["name"] for it in r_price.json()["items"]]
     assert "Phone" in names and "Novel" not in names
 
     # In-stock only
-    r_stock = await client.get(f"{PRODUCTS_BASE}/?in_stock=true")
+    r_stock = await client.get(f"{BASE}/?in_stock=true")
     assert all(it["stock"] > 0 for it in r_stock.json()["items"])
 
     # q search (name/description, case-insensitive)
-    r_q = await client.get(f"{PRODUCTS_BASE}/?q=BOOK")
+    r_q = await client.get(f"{BASE}/?q=BOOK")
     names_q = [it["name"] for it in r_q.json()["items"]]
     assert (
         "Novel" in names_q or "Laptop" in names_q
     )  # "book" in description of Novel, "ultrabook" in Laptop
 
     # Sort descending by price
-    r_sort = await client.get(f"{PRODUCTS_BASE}/?sort=-price")
+    r_sort = await client.get(f"{BASE}/?sort=-price")
     items = r_sort.json()["items"]
     assert len(items) >= 2
     assert items[0]["price"] >= items[1]["price"]
@@ -192,16 +174,17 @@ async def test_list_products_paged_and_filtered(client: AsyncClient, category, o
 
 
 @pytest.mark.asyncio
-async def test_get_product_success(client: AsyncClient, category):
-    created = (await create_product(client, name="GetMe", category_id=category["id"])).json()
-    r = await client.get(f"{PRODUCTS_BASE}/{created['id']}")
+async def test_get_product_success(client: AsyncClient, db_session):
+    created = ProductFactory(name="GetMe")
+    await db_session.flush()
+    r = await client.get(f"{BASE}/{created.id}")
     assert r.status_code == 200
     assert r.json()["name"] == "GetMe"
 
 
 @pytest.mark.asyncio
 async def test_get_product_not_found(client: AsyncClient):
-    r = await client.get(f"{PRODUCTS_BASE}/{uuid4()}")
+    r = await client.get(f"{BASE}/{uuid4()}")
     assert r.status_code == 404
     assert r.json()["detail"] == "Product not found."
 
@@ -210,10 +193,11 @@ async def test_get_product_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_product_success(client: AsyncClient, category):
-    created = (await create_product(client, name="Old", category_id=category["id"])).json()
+async def test_update_product_success(auth_admin_client: AsyncClient, db_session):
+    created = ProductFactory()
+    await db_session.flush()
     payload = {"name": "New", "price": 15.5}
-    r = await client.put(f"{PRODUCTS_BASE}/{created['id']}", json=payload)
+    r = await auth_admin_client.put(f"{BASE}/{created.id}", json=payload)
     assert r.status_code == 200
     body = r.json()
     assert body["name"] == "New"
@@ -221,19 +205,23 @@ async def test_update_product_success(client: AsyncClient, category):
 
 
 @pytest.mark.asyncio
-async def test_update_product_not_found(client: AsyncClient):
-    r = await client.put(f"{PRODUCTS_BASE}/{uuid4()}", json={"name": "X"})
+async def test_update_product_not_found(auth_admin_client: AsyncClient):
+    r = await auth_admin_client.put(f"{BASE}/{uuid4()}", json={"name": "X"})
     assert r.status_code == 404
     assert r.json()["detail"] == "Product not found."
 
 
 @pytest.mark.asyncio
-async def test_update_product_duplicate_name_same_category_conflict(client: AsyncClient, category):
-    _ = (await create_product(client, name="ProdA", category_id=category["id"])).json()
-    b = (await create_product(client, name="ProdB", category_id=category["id"])).json()
+async def test_update_product_duplicate_name_same_category_conflict(
+    auth_admin_client: AsyncClient, db_session
+):
+    category = CategoryFactory()
+    ProductFactory.create(name="ProdA", category=category)
+    b = ProductFactory.create(name="ProdB", category=category)
+    await db_session.flush()
 
     # Try renaming B to A in same category -> violates (category_id, name) unique
-    r = await client.put(f"{PRODUCTS_BASE}/{b['id']}", json={"name": "ProdA"})
+    r = await auth_admin_client.put(f"{BASE}/{b.id}", json={"name": "ProdA"})
     assert r.status_code == 409, r.text
 
 
@@ -241,18 +229,19 @@ async def test_update_product_duplicate_name_same_category_conflict(client: Asyn
 
 
 @pytest.mark.asyncio
-async def test_delete_product_success_then_404_on_get(client: AsyncClient, category):
-    created = (await create_product(client, name="TempDel", category_id=category["id"])).json()
-    r_del = await client.delete(f"{PRODUCTS_BASE}/{created['id']}")
+async def test_delete_product_success_then_404_on_get(auth_admin_client: AsyncClient, db_session):
+    created = ProductFactory.create(name="TempDel")
+    await db_session.flush()
+    r_del = await auth_admin_client.delete(f"{BASE}/{created.id}")
     assert r_del.status_code == 204
 
-    r_get = await client.get(f"{PRODUCTS_BASE}/{created['id']}")
+    r_get = await auth_admin_client.get(f"{BASE}/{created.id}")
     assert r_get.status_code == 404
     assert r_get.json()["detail"] == "Product not found."
 
 
 @pytest.mark.asyncio
-async def test_delete_product_not_found(client: AsyncClient):
-    r = await client.delete(f"{PRODUCTS_BASE}/{uuid4()}")
+async def test_delete_product_not_found(auth_admin_client: AsyncClient):
+    r = await auth_admin_client.delete(f"{BASE}/{uuid4()}")
     assert r.status_code == 404
     assert r.json()["detail"] == "Product not found."

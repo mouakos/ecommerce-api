@@ -40,10 +40,10 @@ def create_access_token(subject: str, expires_minutes: int | None = None) -> str
         str: The encoded JWT token.
     """
     expire = datetime.now(UTC) + timedelta(
-        minutes=expires_minutes or settings.ACCESS_TOKEN_EXPIRE_MINUTES
+        minutes=expires_minutes or settings.access_token_expire_minutes
     )
     payload = {"sub": str(subject), "exp": expire}
-    return jwt.encode(payload, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)  # type: ignore[no-any-return]
+    return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)  # type: ignore[no-any-return]
 
 
 def decode_token(token: str) -> dict[str, Any]:
@@ -55,4 +55,4 @@ def decode_token(token: str) -> dict[str, Any]:
     Returns:
         dict[str, Any]: The decoded token payload.
     """
-    return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])  # type: ignore[no-any-return]
+    return jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])  # type: ignore[no-any-return]

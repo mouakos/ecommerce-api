@@ -7,12 +7,14 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import RoleChecker
 from app.db.session import get_session
 from app.schemas.common import Page
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.services.product_service import ProductService
 
 router = APIRouter(prefix="/api/v1/products", tags=["Products"])
+role_checker = Depends(RoleChecker(["admin"]))
 
 
 @router.get("/", response_model=Page[ProductRead])
@@ -44,7 +46,12 @@ async def list_products(
     return Page[ProductRead](items=items, total=total, limit=limit, offset=offset)
 
 
-@router.post("/", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=ProductRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[role_checker],
+)
 async def create_product(
     data: ProductCreate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> ProductRead:
@@ -60,7 +67,7 @@ async def get_product(
     return await ProductService.get(product_id, db)
 
 
-@router.put("/{product_id}", response_model=ProductRead)
+@router.put("/{product_id}", response_model=ProductRead, dependencies=[role_checker])
 async def update_product(
     product_id: UUID, data: ProductUpdate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> ProductRead:
@@ -68,7 +75,7 @@ async def update_product(
     return await ProductService.update(product_id, data, db)
 
 
-@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[role_checker])
 async def delete_product(
     product_id: UUID, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> None:

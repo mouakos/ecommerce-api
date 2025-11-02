@@ -1,84 +1,71 @@
 """End to end tests for order-related API endpoints."""
 
+from uuid import UUID
+
 import pytest
 from httpx import AsyncClient
 
-AUTH = "/api/v1/auth"
+from app.core.config import settings
+from tests.factories import CartFactory, CartItemFactory, ProductFactory
+
 CART = "/api/v1/cart"
 ORD = "/api/v1/orders"
-PROD = "/api/v1/products"
-CAT = "/api/v1/categories"
 
 
-async def auth_headers(client: AsyncClient, email: str) -> dict[str, str]:
-    await client.post(f"{AUTH}/register", json={"email": email, "password": "secret"})
-    tok = (
-        await client.post(
-            f"{AUTH}/login",
-            data={"username": email, "password": "secret"},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-    ).json()["access_token"]
-    return {"Authorization": f"Bearer {tok}"}
+def get_user_id_from_token(auth_client: AsyncClient) -> UUID:
+    from jose import jwt
 
-
-async def mk_cat_prod(client: AsyncClient, name: str, stock: int, price: float) -> str:
-    cat = (await client.post(f"{CAT}/", json={"name": f"{name}-cat"})).json()["id"]
-    return (
-        await client.post(
-            f"{PROD}/",
-            json={
-                "name": name,
-                "description": "d",
-                "price": price,
-                "stock": stock,
-                "category_id": cat,
-            },
-        )
-    ).json()["id"]
+    auth_header = auth_client.headers.get("Authorization")
+    token = auth_header.split(" ")[1]  # Remove "Bearer " prefix
+    payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+    return UUID(payload.get("sub"))  # or another claim, depending on your implementation
 
 
 @pytest.mark.asyncio
-async def test_checkout_success_decrements_stock_and_clears_cart(client: AsyncClient):
-    h = await auth_headers(client, "order1@example.com")
-    pid = await mk_cat_prod(client, "Widget", stock=3, price=10.0)
-    await client.post(f"{CART}/", headers=h)
-    await client.post(f"{CART}/items", headers=h, json={"product_id": pid, "quantity": 2})
+async def test_checkout_decrements_stock_and_clears_cart(auth_client: AsyncClient, db_session):
+    product = ProductFactory(stock=3, price=10.0)
+    await db_session.flush()
+    user_id = get_user_id_from_token(auth_client)
+    cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=10.0)
+    CartFactory(user_id=user_id, items=[cart_item])
 
-    r = await client.post(f"{ORD}/", headers=h)
+    r = await auth_client.post(f"{ORD}/")
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["total_amount"] == 20.0
     assert len(body["items"]) == 1 and body["items"][0]["quantity"] == 2
 
     # cart is cleared
-    cart = (await client.get(f"{CART}/", headers=h)).json()
+    cart = (await auth_client.get(f"{CART}/")).json()
     assert cart["items"] == []
 
 
 @pytest.mark.asyncio
-async def test_checkout_empty_cart_400(client: AsyncClient):
-    h = await auth_headers(client, "order2@example.com")
-    await client.post(f"{CART}/", headers=h)
-    r = await client.post(f"{ORD}/", headers=h)
+async def test_checkout_empty_cart_400(auth_client: AsyncClient, db_session):
+    user_id = get_user_id_from_token(auth_client)
+    CartFactory(user_id=user_id)
+    await db_session.flush()
+
+    r = await auth_client.post(f"{ORD}/")
     assert r.status_code == 400
     assert r.json()["detail"] == "Cart is empty."
 
 
 @pytest.mark.asyncio
-async def test_list_and_get_my_orders(client: AsyncClient):
-    h = await auth_headers(client, "order4@example.com")
-    pid = await mk_cat_prod(client, "Thing", stock=5, price=2.5)
-    await client.post(f"{CART}/", headers=h)
-    await client.post(f"{CART}/items", headers=h, json={"product_id": pid, "quantity": 4})
-    created = (await client.post(f"{ORD}/", headers=h)).json()
+async def test_list_and_get_my_orders(auth_client: AsyncClient, db_session):
+    product = ProductFactory(stock=5, price=10.0)
+    await db_session.flush()
+    user_id = get_user_id_from_token(auth_client)
+    cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=10.0)
+    CartFactory(user_id=user_id, items=[cart_item])
+    created = (await auth_client.post(f"{ORD}/")).json()
 
     # list
-    r_list = await client.get(f"{ORD}/", headers=h)
+    r_list = await auth_client.get(f"{ORD}/")
     assert r_list.status_code == 200
     assert any(o["id"] == created["id"] for o in r_list.json())
 
     # get one
-    r_one = await client.get(f"{ORD}/{created['id']}", headers=h)
+    r_one = await auth_client.get(f"{ORD}/{created['id']}")
     assert r_one.status_code == 200
     assert r_one.json()["number"].startswith("ORD-")

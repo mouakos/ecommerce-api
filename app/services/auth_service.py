@@ -44,7 +44,7 @@ class AuthService:
         user = User(email=data.email, hashed_password=get_password_hash(data.password))
 
         db.add(user)
-        await db.commit()
+        await db.flush()
         await db.refresh(user)
         return user
 

@@ -45,7 +45,7 @@ class CartService:
         cart = Cart(user_id=user_id)
 
         db.add(cart)
-        await db.commit()
+        await db.flush()
         await db.refresh(cart)
         return cart
 
@@ -61,7 +61,7 @@ class CartService:
         if not cart:
             return
         await db.delete(cart)
-        await db.commit()
+        await db.flush()
 
     @staticmethod
     async def add_item_to_user_cart(user_id: UUID, data: CartItemCreate, db: AsyncSession) -> Cart:
@@ -104,7 +104,7 @@ class CartService:
             )
             db.add(item)
 
-        await db.commit()
+        await db.flush()
         await db.refresh(cart)
         return cart
 
@@ -138,7 +138,7 @@ class CartService:
 
         if quantity <= 0:
             await db.delete(item)
-            await db.commit()
+            await db.flush()
             await db.refresh(cart)
             return cart
 
@@ -147,7 +147,7 @@ class CartService:
             raise ConflictError("Insufficient stock.")
 
         item.quantity = quantity
-        await db.commit()
+        await db.flush()
         await db.refresh(cart)
         return cart
 
@@ -172,4 +172,4 @@ class CartService:
             raise NotFoundError("Item not found in cart.")
 
         await db.delete(item)
-        await db.commit()
+        await db.flush()

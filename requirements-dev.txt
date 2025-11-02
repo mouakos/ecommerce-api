@@ -7,3 +7,5 @@ ruff
 mypy
 pre-commit
 aiosqlite
+factory_boy
+alembic
