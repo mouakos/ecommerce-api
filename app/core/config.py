@@ -8,10 +8,10 @@ class Settings(BaseSettings):
     """Environment variables for the application."""
 
     # database
-    DATABASE_URL: str = Field(..., description="Database connection URL")
+    DATABASE_URL: str = Field(default="", description="Database connection URL")
 
     # auth
-    SECRET_KEY: str = Field(..., description="Secret key for JWT signing")
+    SECRET_KEY: str = Field(default="", description="Secret key for JWT signing")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
         default=60, description="Access token expiration time in minutes"
     )
