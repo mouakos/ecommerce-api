@@ -39,9 +39,10 @@ async def test_get_my_cart_idempotent(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_add_item_success_and_increment_existing_line(auth_client: AsyncClient):
+async def test_add_item_success_and_increment_existing_line(auth_client: AsyncClient, db_session):
     # Setup product
     product = ProductFactory(price=99.0, stock=10)
+    await db_session.flush()
 
     # Add quantity 1
     r_add1 = await auth_client.post(
@@ -63,8 +64,9 @@ async def test_add_item_success_and_increment_existing_line(auth_client: AsyncCl
 
 
 @pytest.mark.asyncio
-async def test_add_item_blocked_by_stock(auth_client: AsyncClient):
+async def test_add_item_blocked_by_stock(auth_client: AsyncClient, db_session):
     product = ProductFactory(price=10.0, stock=2)
+    await db_session.flush()
 
     # add 2 -> ok
     r1 = await auth_client.post(
@@ -103,8 +105,9 @@ async def test_add_item_validation_errors(auth_client: AsyncClient):
 
 # ---------------- Update Item ----------------
 @pytest.mark.asyncio
-async def test_update_item_quantity_and_remove_when_zero(auth_client: AsyncClient):
+async def test_update_item_quantity_and_remove_when_zero(auth_client: AsyncClient, db_session):
     product = ProductFactory()
+    await db_session.flush()
 
     added = await auth_client.post(
         f"{BASE}/items", json={"product_id": str(product.id), "quantity": 1}
@@ -130,8 +133,9 @@ async def test_update_item_not_found(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_item_blocked_by_stock(auth_client: AsyncClient):
+async def test_update_item_blocked_by_stock(auth_client: AsyncClient, db_session):
     product = ProductFactory(stock=3)
+    await db_session.flush()
 
     _ = await auth_client.post(f"{BASE}/")
     added = await auth_client.post(
@@ -152,8 +156,9 @@ async def test_update_item_blocked_by_stock(auth_client: AsyncClient):
 
 # ---------------- Remove Item ----------------
 @pytest.mark.asyncio
-async def test_remove_item_success_then_404(auth_client: AsyncClient):
+async def test_remove_item_success_then_404(auth_client: AsyncClient, db_session):
     product = ProductFactory()
+    await db_session.flush()
 
     added = await auth_client.post(
         f"{BASE}/items", json={"product_id": str(product.id), "quantity": 2}
@@ -186,11 +191,12 @@ async def test_clear_my_cart(auth_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_carts_are_isolated_per_user(
-    auth_client: AsyncClient, auth_admin_client: AsyncClient
+    auth_client: AsyncClient, auth_admin_client: AsyncClient, db_session
 ):
     category = CategoryFactory()
     product_a = ProductFactory(name="Chess", category=category, stock=5)
     product_b = ProductFactory(name="Go", category=category, stock=5)
+    await db_session.flush()
 
     # Alice adds Chess (1)
     await auth_client.post(f"{BASE}/items", json={"product_id": str(product_a.id), "quantity": 1})

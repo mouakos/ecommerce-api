@@ -46,9 +46,10 @@ async def test_create_category_duplicate_name_conflict(auth_admin_client: AsyncC
 
 
 @pytest.mark.asyncio
-async def test_pagination_basic_shape_and_ordering(client: AsyncClient):
+async def test_pagination_basic_shape_and_ordering(client: AsyncClient, db_session):
     # Create 15 categories
     CategoryFactory.create_batch(15)
+    await db_session.flush()
 
     r1 = await client.get(f"{BASE}/?limit=5&offset=0")
     assert r1.status_code == 200
@@ -68,8 +69,9 @@ async def test_pagination_basic_shape_and_ordering(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_last_partial_page_and_empty_page(client: AsyncClient):
+async def test_last_partial_page_and_empty_page(client: AsyncClient, db_session):
     CategoryFactory.create_batch(13)
+    await db_session.flush()
 
     r_full = await client.get(f"{BASE}/?limit=5&offset=10")
     assert r_full.status_code == 200
@@ -90,11 +92,12 @@ async def test_limit_and_offset_guards(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_pagination_with_search(client: AsyncClient):
+async def test_pagination_with_search(client: AsyncClient, db_session):
     # Ensure both matching and non-matching names exist
     CategoryFactory.create(name="Books")
     CategoryFactory.create(name="Board Games")
     CategoryFactory.create(name="Electronics")
+    await db_session.flush()
 
     # Search "bo" -> Books, Board Games (case-insensitive)
     r = await client.get(f"{BASE}/?search=Bo&limit=10&offset=0")
@@ -108,9 +111,10 @@ async def test_pagination_with_search(client: AsyncClient):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("limit,offset", [(1, 0), (2, 2), (3, 3), (5, 5)])
-async def test_no_gaps_no_dupes_across_pages(client: AsyncClient, limit, offset):
+async def test_no_gaps_no_dupes_across_pages(client: AsyncClient, limit, offset, db_session):
     # Create 10 predictable categories
     CategoryFactory.create_batch(10)
+    await db_session.flush()
 
     # Collect two adjacent slices and ensure union equals the combined slice
     r_a = await client.get(f"{BASE}/?limit={limit}&offset={offset}")
@@ -129,8 +133,9 @@ async def test_list_categories_empty(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_list_categories_after_creations(client: AsyncClient):
+async def test_list_categories_after_creations(client: AsyncClient, db_session):
     CategoryFactory.create_batch(2)
+    await db_session.flush()
     r = await client.get(f"{BASE}/")
     assert r.status_code == 200
     assert len(r.json()["items"]) == 2
@@ -140,8 +145,9 @@ async def test_list_categories_after_creations(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_get_category_success(client: AsyncClient):
+async def test_get_category_success(client: AsyncClient, db_session):
     created = CategoryFactory.create(name="GetMe")
+    await db_session.flush()
     r = await client.get(f"{BASE}/{created.id}")
     assert r.status_code == 200
     assert r.json()["name"] == "GetMe"
@@ -158,8 +164,9 @@ async def test_get_category_not_found(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_category_success(auth_admin_client: AsyncClient):
+async def test_update_category_success(auth_admin_client: AsyncClient, db_session):
     created = CategoryFactory.create(name="OldName")
+    await db_session.flush()
     r = await auth_admin_client.put(
         f"{BASE}/{created.id}",
         json={"name": "NewName"},
@@ -176,9 +183,10 @@ async def test_update_category_not_found(auth_admin_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_update_category_duplicate_name_conflict(auth_admin_client: AsyncClient):
+async def test_update_category_duplicate_name_conflict(auth_admin_client: AsyncClient, db_session):
     CategoryFactory.create(name="Electronics")
     b = CategoryFactory.create(name="Decoration")
+    await db_session.flush()
 
     # Try renaming Decoration -> Electronics
     r = await auth_admin_client.put(f"{BASE}/{b.id}", json={"name": "Electronics"})
@@ -190,8 +198,9 @@ async def test_update_category_duplicate_name_conflict(auth_admin_client: AsyncC
 
 
 @pytest.mark.asyncio
-async def test_delete_category_success_then_404_on_get(auth_admin_client: AsyncClient):
+async def test_delete_category_success_then_404_on_get(auth_admin_client: AsyncClient, db_session):
     created = CategoryFactory.create(name="ToDelete")
+    await db_session.flush()
     r_del = await auth_admin_client.delete(f"{BASE}/{created.id}")
     assert r_del.status_code == 204
 

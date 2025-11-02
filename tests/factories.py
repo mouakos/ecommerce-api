@@ -16,7 +16,7 @@ class BaseFactory(SQLAlchemyModelFactory):
 
         abstract = True
         sqlalchemy_session = None  # Set this in your tests
-        sqlalchemy_session_persistence = "flush"
+        sqlalchemy_session_persistence = None
 
 
 class CategoryFactory(BaseFactory):

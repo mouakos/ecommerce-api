@@ -1,5 +1,7 @@
 """Configuration settings for the application using Pydantic."""
 
+import secrets
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlmodel import Field
 
@@ -14,7 +16,9 @@ class Settings(BaseSettings):
 
     # auth
     secret_key: str = Field(
-        "dev-secret", description="Secret key for JWT signing", alias="SECRET_KEY"
+        default_factory=lambda: secrets.token_urlsafe(32),
+        description="Secret key for JWT signing",
+        alias="SECRET_KEY",
     )
     access_token_expire_minutes: int = Field(
         default=60,

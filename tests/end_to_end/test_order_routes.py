@@ -22,8 +22,9 @@ def get_user_id_from_token(auth_client: AsyncClient) -> UUID:
 
 
 @pytest.mark.asyncio
-async def test_checkout_decrements_stock_and_clears_cart(auth_client: AsyncClient):
+async def test_checkout_decrements_stock_and_clears_cart(auth_client: AsyncClient, db_session):
     product = ProductFactory(stock=3, price=10.0)
+    await db_session.flush()
     user_id = get_user_id_from_token(auth_client)
     cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=10.0)
     CartFactory(user_id=user_id, items=[cart_item])
@@ -40,9 +41,10 @@ async def test_checkout_decrements_stock_and_clears_cart(auth_client: AsyncClien
 
 
 @pytest.mark.asyncio
-async def test_checkout_empty_cart_400(auth_client: AsyncClient):
+async def test_checkout_empty_cart_400(auth_client: AsyncClient, db_session):
     user_id = get_user_id_from_token(auth_client)
     CartFactory(user_id=user_id)
+    await db_session.flush()
 
     r = await auth_client.post(f"{ORD}/")
     assert r.status_code == 400
@@ -50,8 +52,9 @@ async def test_checkout_empty_cart_400(auth_client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_list_and_get_my_orders(auth_client: AsyncClient):
+async def test_list_and_get_my_orders(auth_client: AsyncClient, db_session):
     product = ProductFactory(stock=5, price=10.0)
+    await db_session.flush()
     user_id = get_user_id_from_token(auth_client)
     cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=10.0)
     CartFactory(user_id=user_id, items=[cart_item])
