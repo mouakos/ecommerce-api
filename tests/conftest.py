@@ -108,6 +108,23 @@ async def auth_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, N
 
 
 @pytest.fixture
+async def auth_client1(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Authenticated HTTP client for tests."""
+    user = User(role="user", email="user1@example.com", hashed_password=get_password_hash("user1"))
+    db_session.add(user)
+    await db_session.flush()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        r = await ac.post(
+            "/api/v1/auth/login",
+            data={"username": user.email, "password": "user1"},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        ac.headers.update({"Authorization": f"Bearer {r.json()['access_token']}"})
+        yield ac
+
+
+@pytest.fixture
 async def auth_admin_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Authenticated admin HTTP client for tests."""
     admin_user = User(

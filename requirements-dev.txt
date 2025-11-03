@@ -9,3 +9,4 @@ pre-commit
 aiosqlite
 factory_boy
 alembic
+typer

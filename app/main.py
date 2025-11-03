@@ -7,6 +7,7 @@ from app.api.v1.cart_routes import router as cart_router
 from app.api.v1.category_routes import router as category_router
 from app.api.v1.order_routes import router as orders_router
 from app.api.v1.product_routes import router as product_router
+from app.api.v1.review_routes import router as review_router
 from app.core.error_handler import register_exception_handlers
 
 app = FastAPI(
@@ -44,3 +45,4 @@ app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(category_router)
 app.include_router(product_router)
+app.include_router(review_router)
