@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.api.v1.auth_routes import router as auth_router
 from app.api.v1.cart_routes import router as cart_router
 from app.api.v1.category_routes import router as category_router
+from app.api.v1.meta_routes import router as meta_router
 from app.api.v1.order_routes import router as orders_router
 from app.api.v1.product_routes import router as product_router
 from app.api.v1.review_routes import router as review_router
@@ -46,3 +47,4 @@ app.include_router(orders_router)
 app.include_router(category_router)
 app.include_router(product_router)
 app.include_router(review_router)
+app.include_router(meta_router)
