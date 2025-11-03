@@ -11,7 +11,12 @@ class Settings(BaseSettings):
 
     # database
     database_url: str = Field(
-        "sqlite+aiosqlite:///:memory:", description="Database connection URL", alias="DATABASE_URL"
+        "sqlite+aiosqlite:///./dev.db",
+        description=(
+            "Database connection URL. Defaults to a local file-based SQLite for fast dev iteration. "
+            "Override with Postgres (e.g. postgresql+asyncpg://user:pass@localhost:5432/db) in .env or environment."
+        ),
+        alias="DATABASE_URL",
     )
 
     # auth
