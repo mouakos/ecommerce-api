@@ -1,7 +1,5 @@
 """Configuration settings for the application using Pydantic."""
 
-import secrets
-
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlmodel import Field
 
@@ -11,17 +9,16 @@ class Settings(BaseSettings):
 
     # database
     database_url: str = Field(
-        "sqlite+aiosqlite:///./dev.db",
-        description=(
-            "Database connection URL. Defaults to a local file-based SQLite for fast dev iteration. "
-            "Override with Postgres (e.g. postgresql+asyncpg://user:pass@localhost:5432/db) in .env or environment."
-        ),
-        alias="DATABASE_URL",
+        default="", alias="DATABASE_URL", description="Database connection URL"
     )
-
+    test_database_url: str = Field(
+        default="sqlite+aiosqlite:///:memory:",
+        alias="TEST_DATABASE_URL",
+        description="Test database connection URL",
+    )
     # auth
     secret_key: str = Field(
-        default_factory=lambda: secrets.token_urlsafe(32),
+        default="",
         description="Secret key for JWT signing",
         alias="SECRET_KEY",
     )
