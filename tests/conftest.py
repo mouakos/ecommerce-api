@@ -1,4 +1,10 @@
-"""Common fixtures for testing."""
+"""Common fixtures for testing.
+
+Respects optional TEST_DATABASE_URL without touching production DATABASE_URL.
+If TEST_DATABASE_URL is unset, falls back to ephemeral in-memory SQLite.
+This avoids accidentally running tests against a production database while
+allowing CI to export DATABASE_URL separately.
+"""
 
 import asyncio
 from collections.abc import AsyncGenerator
@@ -8,14 +14,12 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel, text
 
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.session import get_session
 from app.main import app
 from app.models.user import User
 from tests.factories import BaseFactory
-
-# Use in-memory SQLite for tests
-TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
 
 
 @pytest.fixture(scope="session")
@@ -26,15 +30,16 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 async def async_engine():
     """Create engine & schema once for the test session."""
-    engine = create_async_engine(TEST_DB_URL, echo=False, future=True)
+    engine = create_async_engine(settings.test_database_url, echo=False, future=True)
 
     # Create the database schema
     async with engine.begin() as conn:
-        # Enable FK constraints in SQLite
-        await conn.execute(text("PRAGMA foreign_keys=ON"))
+        if settings.test_database_url.startswith("sqlite"):
+            # Enable FK constraints in SQLite
+            await conn.execute(text("PRAGMA foreign_keys=ON"))
 
         await conn.run_sync(SQLModel.metadata.create_all)
 
@@ -52,7 +57,11 @@ async def db_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
     """Fresh session for each test."""
     async_session = async_sessionmaker(async_engine, expire_on_commit=False)
     async with async_session() as session:
-        yield session
+        tx = await session.begin()
+        try:
+            yield session
+        finally:
+            await tx.rollback()
 
 
 def bind_factory_session_recursively(factory_class, db_session: AsyncSession):
