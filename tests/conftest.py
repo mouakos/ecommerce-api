@@ -6,11 +6,11 @@ This avoids accidentally running tests against a production database while
 allowing CI to export DATABASE_URL separately.
 """
 
-import asyncio
 from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel, text
 
@@ -22,16 +22,8 @@ from app.models.user import User
 from tests.factories import BaseFactory
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    """Session-wide event loop for pytest-asyncio."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="session")
-async def async_engine():
+@pytest.fixture
+async def async_engine() -> AsyncGenerator[Engine, None]:
     """Create engine & schema once for the test session."""
     engine = create_async_engine(settings.test_database_url, echo=False, future=True)
 
@@ -57,11 +49,7 @@ async def db_session(async_engine) -> AsyncGenerator[AsyncSession, None]:
     """Fresh session for each test."""
     async_session = async_sessionmaker(async_engine, expire_on_commit=False)
     async with async_session() as session:
-        tx = await session.begin()
-        try:
-            yield session
-        finally:
-            await tx.rollback()
+        yield session
 
 
 def bind_factory_session_recursively(factory_class, db_session: AsyncSession):
