@@ -11,6 +11,7 @@ from app.models.common import TimestampMixin, UUIDMixin, utcnow
 if TYPE_CHECKING:
     from app.models.cart import CartItem
     from app.models.category import Category
+    from app.models.review import Review
 
 
 class Product(UUIDMixin, TimestampMixin, table=True):
@@ -32,5 +33,8 @@ class Product(UUIDMixin, TimestampMixin, table=True):
     category: Optional["Category"] = Relationship(back_populates="products")
 
     cart_items: list["CartItem"] = Relationship(
+        back_populates="product", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
+    )
+    reviews: list["Review"] = Relationship(
         back_populates="product", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
     )

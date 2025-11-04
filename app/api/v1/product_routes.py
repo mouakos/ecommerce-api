@@ -11,7 +11,9 @@ from app.api.deps import RoleChecker
 from app.db.session import get_session
 from app.schemas.common import Page
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
+from app.schemas.review import AverageReview
 from app.services.product_service import ProductService
+from app.services.review_service import ReviewService
 
 router = APIRouter(prefix="/api/v1/products", tags=["Products"])
 role_checker = Depends(RoleChecker(["admin"]))
@@ -44,6 +46,16 @@ async def list_products(
         order_dir=order_dir,
     )
     return Page[ProductRead](items=items, total=total, limit=limit, offset=offset)
+
+
+@router.get("/{product_id}/reviews/summary", response_model=AverageReview)
+async def get_product_review_summary(
+    product_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> AverageReview:
+    """Get average rating and review count for a product."""
+    avg, count = await ReviewService.average(product_id, db)
+    return AverageReview(average_rating=avg, review_count=count)
 
 
 @router.post(

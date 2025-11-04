@@ -1,40 +1,37 @@
-"""Common fixtures for testing."""
+"""Common fixtures for testing.
 
-import asyncio
+Respects optional TEST_DATABASE_URL without touching production DATABASE_URL.
+If TEST_DATABASE_URL is unset, falls back to ephemeral in-memory SQLite.
+This avoids accidentally running tests against a production database while
+allowing CI to export DATABASE_URL separately.
+"""
+
 from collections.abc import AsyncGenerator
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import Engine
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlmodel import SQLModel, text
 
+from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.session import get_session
 from app.main import app
 from app.models.user import User
 from tests.factories import BaseFactory
 
-# Use in-memory SQLite for tests
-TEST_DB_URL = "sqlite+aiosqlite:///:memory:"
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Session-wide event loop for pytest-asyncio."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
 
 @pytest.fixture
-async def async_engine():
+async def async_engine() -> AsyncGenerator[Engine, None]:
     """Create engine & schema once for the test session."""
-    engine = create_async_engine(TEST_DB_URL, echo=False, future=True)
+    engine = create_async_engine(settings.test_database_url, echo=False, future=True)
 
     # Create the database schema
     async with engine.begin() as conn:
-        # Enable FK constraints in SQLite
-        await conn.execute(text("PRAGMA foreign_keys=ON"))
+        if settings.test_database_url.startswith("sqlite"):
+            # Enable FK constraints in SQLite
+            await conn.execute(text("PRAGMA foreign_keys=ON"))
 
         await conn.run_sync(SQLModel.metadata.create_all)
 
@@ -101,6 +98,23 @@ async def auth_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, N
         r = await ac.post(
             "/api/v1/auth/login",
             data={"username": user.email, "password": "user"},
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+        )
+        ac.headers.update({"Authorization": f"Bearer {r.json()['access_token']}"})
+        yield ac
+
+
+@pytest.fixture
+async def auth_client1(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Authenticated HTTP client for tests."""
+    user = User(role="user", email="user1@example.com", hashed_password=get_password_hash("user1"))
+    db_session.add(user)
+    await db_session.flush()
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        r = await ac.post(
+            "/api/v1/auth/login",
+            data={"username": user.email, "password": "user1"},
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         ac.headers.update({"Authorization": f"Bearer {r.json()['access_token']}"})

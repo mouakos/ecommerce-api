@@ -10,6 +10,7 @@ from app.models.common import TimestampMixin, UUIDMixin, utcnow
 if TYPE_CHECKING:
     from app.models.cart import Cart
     from app.models.order import Order
+    from app.models.review import Review
 
 
 class User(UUIDMixin, TimestampMixin, table=True):
@@ -27,5 +28,8 @@ class User(UUIDMixin, TimestampMixin, table=True):
 
     cart: Optional["Cart"] = Relationship(back_populates="user")
     orders: list["Order"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
+    )
+    reviews: list["Review"] = Relationship(
         back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
     )
