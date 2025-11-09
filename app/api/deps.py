@@ -31,11 +31,10 @@ async def get_current_user(
     Returns:
         User: The current user.
     """
-    try:
-        payload = decode_token(token)
-        user_id = UUID(payload.get("sub"))
-    except Exception as err:
-        raise UnauthorizedError("Invalid or expired token.") from err
+    payload = decode_token(token)
+    if payload is None:
+        raise UnauthorizedError("Invalid or expired token.")
+    user_id = UUID(payload.get("sub"))
 
     user = await db.get(User, user_id)
     if not user:
