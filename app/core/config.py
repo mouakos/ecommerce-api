@@ -23,9 +23,14 @@ class Settings(BaseSettings):
         alias="SECRET_KEY",
     )
     access_token_expire_minutes: int = Field(
-        default=60,
+        default=15,
         description="Access token expiration time in minutes",
         alias="ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
+    refresh_token_expire_days: int = Field(
+        default=7,
+        description="Refresh token expiration time in days",
+        alias="REFRESH_TOKEN_EXPIRE_DAYS",
     )
     jwt_algorithm: str = Field(
         default="HS256", description="JWT signing algorithm", alias="JWT_ALGORITHM"

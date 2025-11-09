@@ -7,8 +7,9 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import TokenType
 from app.core.errors import UnauthorizedError
-from app.core.security import decode_token
+from app.core.security import verify_token_type
 from app.db.session import get_session
 from app.models.user import User
 
@@ -31,14 +32,13 @@ async def get_current_user(
     Returns:
         User: The current user.
     """
-    payload = decode_token(token)
-    if payload is None:
-        raise UnauthorizedError("Invalid or expired token.")
-    user_id = UUID(payload.get("sub"))
+    user_id = verify_token_type(token, expected_type=TokenType.ACCESS)
+    if not user_id:
+        raise UnauthorizedError("Invalid or expired access token.")
 
-    user = await db.get(User, user_id)
+    user = await db.get(User, UUID(user_id))
     if not user:
-        raise UnauthorizedError("Invalid or expired token.")
+        raise UnauthorizedError("Invalid or expired access token.")
     return user
 
 

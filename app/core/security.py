@@ -1,19 +1,19 @@
 """Security utilities for handling passwords and JWT tokens."""
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
+from app.core.enums import TokenType
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def get_password_hash(password: str) -> str:
     """Generate a hashed password."""
-    return pwd_context.hash(password)  # type: ignore[no-any-return]
+    return str(pwd_context.hash(password))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -26,7 +26,7 @@ def verify_password(plain: str, hashed: str) -> bool:
     Returns:
         bool: True if the passwords match, False otherwise.
     """
-    return pwd_context.verify(plain, hashed)  # type: ignore[no-any-return]
+    return bool(pwd_context.verify(plain, hashed))
 
 
 def create_access_token(subject: str, expires_minutes: int | None = None) -> str:
@@ -42,20 +42,39 @@ def create_access_token(subject: str, expires_minutes: int | None = None) -> str
     expire = datetime.now(UTC) + timedelta(
         minutes=expires_minutes or settings.access_token_expire_minutes
     )
-    payload = {"sub": str(subject), "exp": expire}
-    return jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm)  # type: ignore[no-any-return]
+    payload = {"sub": str(subject), "exp": expire, "token_type": TokenType.ACCESS}
+    return str(jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm))
 
 
-def decode_token(token: str) -> dict[str, Any] | None:
-    """Decode a JWT token.
+def create_refresh_token(subject: str, expires_days: int | None = None) -> str:
+    """Create a new refresh token.
 
     Args:
-        token (str): The JWT token to decode.
+        subject (str): The subject for the token, typically the user ID.
+        expires_days (int | None, optional): The expiration time in days. Defaults to None.
 
     Returns:
-        dict[str, Any] | None: The decoded token payload or None if decoding fails.
+        str: The encoded JWT token.
+    """
+    expire = datetime.now(UTC) + timedelta(days=expires_days or settings.refresh_token_expire_days)
+    payload = {"sub": str(subject), "exp": expire, "token_type": TokenType.REFRESH}
+    return str(jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm))
+
+
+def verify_token_type(token: str, expected_type: TokenType) -> str | None:
+    """Verify that the token is of the expected type.
+
+    Args:
+        token (str): The JWT token to verify.
+        expected_type (TokenType): The expected token type.
+
+    Returns:
+        str | None: The subject if the token type matches, None otherwise.
     """
     try:
-        return jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])  # type: ignore[no-any-return]
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        if payload.get("token_type") == expected_type and payload.get("sub"):
+            return str(payload.get("sub"))
+        return None
     except JWTError:
         return None

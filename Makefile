@@ -41,7 +41,7 @@ precommit: ## Run pre-commit hooks on all files
 	pre-commit run --all-files
 
 up: ## Start the docker containers
-	docker compose up -d db pgadmin
+	docker compose up -d db
 
 down: ## Stop the docker containers
 	docker compose down
