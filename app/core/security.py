@@ -56,6 +56,6 @@ def decode_token(token: str) -> dict[str, Any] | None:
         dict[str, Any] | None: The decoded token payload or None if decoding fails.
     """
     try:
-        return jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        return jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])  # type: ignore[no-any-return]
     except JWTError:
         return None

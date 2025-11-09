@@ -1,6 +1,6 @@
 """API Routes dependencies."""
 
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import Depends
@@ -49,7 +49,7 @@ class RoleChecker:
         """Initialize the RoleChecker with allowed roles."""
         self.allowed_roles = allowed_roles
 
-    def __call__(self, current_user: Annotated[User, Depends(get_current_user)]) -> Any:  # noqa: ANN401
+    def __call__(self, current_user: Annotated[User, Depends(get_current_user)]) -> bool:
         """Check if the current user has one of the allowed roles."""
         if current_user.role in self.allowed_roles:
             return True
