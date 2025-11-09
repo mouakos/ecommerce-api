@@ -2,8 +2,8 @@
 
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.cart import Cart, CartItem
@@ -25,8 +25,8 @@ class CartService:
         Returns:
             Cart | None: The cart for the user, or None if not found.
         """
-        res = await db.execute(select(Cart).where(Cart.user_id == user_id))
-        return res.scalar_one_or_none()
+        res = await db.exec(select(Cart).where(Cart.user_id == user_id))
+        return res.first()
 
     @staticmethod
     async def get_or_create_user_cart(user_id: UUID, db: AsyncSession) -> Cart:
@@ -83,10 +83,10 @@ class CartService:
 
         product = await ProductService.get(data.product_id, db)
 
-        res = await db.execute(
+        res = await db.exec(
             select(CartItem).where(CartItem.cart_id == cart.id, CartItem.product_id == product.id)
         )
-        item = res.scalar_one_or_none()
+        item = res.first()
         current_qty = item.quantity if item else 0
         new_qty = current_qty + data.quantity
 

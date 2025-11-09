@@ -2,8 +2,8 @@
 
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import func, select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.category import Category
@@ -41,11 +41,11 @@ class CategoryService:
             count_stmt = count_stmt.where(func.lower(Category.name).like(pattern))
 
         # total
-        total = int((await db.execute(count_stmt)).scalar_one())
+        total = (await db.exec(count_stmt)).one()
 
         # items
-        res = await db.execute(stmt.order_by(Category.name).limit(limit).offset(offset))
-        items = list(res.scalars().all())
+        res = await db.exec(stmt.order_by(Category.name).limit(limit).offset(offset))
+        items = list(res.all())
         return items, total
 
     @staticmethod
@@ -155,5 +155,5 @@ class CategoryService:
             Category | None: The category if found, None otherwise.
         """
         stmt = select(Category).where(Category.name == name)
-        result = await db.execute(stmt)
-        return result.scalars().first()
+        result = await db.exec(stmt)
+        return result.first()

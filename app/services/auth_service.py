@@ -1,7 +1,7 @@
 """Service for managing user authentication."""
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import BadRequestError, ConflictError
 from app.core.security import get_password_hash, verify_password
@@ -24,8 +24,8 @@ class AuthService:
             User | None: The user or None if not found.
         """
         stmt = select(User).where(User.email == email)
-        result = await db.execute(stmt)
-        return result.scalar_one_or_none()
+        result = await db.exec(stmt)
+        return result.first()
 
     @staticmethod
     async def create_user(db: AsyncSession, data: UserCreate) -> User:

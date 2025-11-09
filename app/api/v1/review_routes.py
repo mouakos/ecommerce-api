@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker, get_current_user
 from app.core.errors import NotFoundError

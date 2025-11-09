@@ -3,8 +3,8 @@
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import asc, desc, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import asc, desc, func, select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError, UnauthorizedError
 from app.models.review import Review
@@ -41,10 +41,10 @@ class ReviewService:
         _ = await ProductService.get(product_id, db)
 
         # Enforce one review per user & product
-        existing = await db.execute(
-            select(Review).where(Review.product_id == product_id).where(Review.user_id == user_id)  # type: ignore [arg-type]
+        existing = await db.exec(
+            select(Review).where(Review.product_id == product_id).where(Review.user_id == user_id)
         )
-        if existing.scalars().first():
+        if existing.first():
             raise ConflictError(f"User {user_id} has already reviewed this product.")
 
         review = Review(product_id=product_id, user_id=user_id, **data.model_dump())
@@ -77,19 +77,19 @@ class ReviewService:
         Returns:
             tuple[list[Review], int]: List of reviews and total count.
         """
-        stmt = select(Review).where(Review.product_id == product_id)  # type: ignore [arg-type]
-        count_stmt = select(func.count()).select_from(Review).where(Review.product_id == product_id)  # type: ignore [arg-type]
+        stmt = select(Review).where(Review.product_id == product_id)
+        count_stmt = select(func.count()).select_from(Review).where(Review.product_id == product_id)
 
         if visible_only:
-            stmt = stmt.where(Review.is_visible.is_(True))  # type: ignore  [attr-defined]
-            count_stmt = count_stmt.where(Review.is_visible.is_(True))  # type: ignore  [attr-defined]
+            stmt = stmt.where(Review.is_visible)
+            count_stmt = count_stmt.where(Review.is_visible)
 
         order_col = {"created_at": Review.created_at, "rating": Review.rating}[order_by]
-        order_col = desc(order_col) if order_dir == "desc" else asc(order_col)  # type: ignore [arg-type]
+        order_col = desc(order_col) if order_dir == "desc" else asc(order_col)
 
-        total = int((await db.execute(count_stmt)).scalar_one())
-        res = await db.execute(stmt.order_by(order_col).limit(limit).offset(offset))
-        items = list(res.scalars().all())
+        total = (await db.exec(count_stmt)).one()
+        res = await db.exec(stmt.order_by(order_col).limit(limit).offset(offset))
+        items = list(res.all())
         return items, total
 
     @staticmethod
@@ -201,5 +201,5 @@ class ReviewService:
         stmt = select(func.avg(Review.rating), func.count()).where(
             (Review.product_id == product_id) & (Review.is_visible.is_(True))  # type: ignore  [attr-defined]
         )
-        avg_val, count_val = (await db.execute(stmt)).one()
+        avg_val, count_val = (await db.exec(stmt)).one()
         return (float(avg_val) if avg_val is not None else None, int(count_val))

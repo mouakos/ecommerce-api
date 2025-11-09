@@ -2,8 +2,8 @@
 
 from uuid import UUID
 
-from sqlalchemy import desc, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import desc, select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import BadRequestError, ConflictError, NotFoundError
 from app.models.order import Order, OrderItem
@@ -42,16 +42,12 @@ class OrderService:
         # 2) Lock all product rows we'll touch
         product_ids = [it.product_id for it in cart.items]
         products = (
-            (
-                await db.execute(
-                    select(Product)
-                    .where(Product.id.in_(product_ids))  # type: ignore[attr-defined]
-                    .with_for_update()  # row-level locks
-                )
+            await db.exec(
+                select(Product)
+                .where(Product.id.in_(product_ids))  # type: ignore[attr-defined]
+                .with_for_update()  # row-level locks
             )
-            .scalars()
-            .all()
-        )
+        ).all()
         products_by_id = {p.id: p for p in products}
 
         # 3) Validate stock
@@ -102,11 +98,11 @@ class OrderService:
         Returns:
             list[Order]: The list of orders.
         """
-        res = await db.execute(
-            select(Order).where(Order.user_id == user_id).order_by(desc(Order.created_at))  # type: ignore[arg-type]
+        res = await db.exec(
+            select(Order).where(Order.user_id == user_id).order_by(desc(Order.created_at))
         )
 
-        return list(res.scalars())
+        return list(res.all())
 
     @staticmethod
     async def get_user_order(user_id: UUID, order_id: UUID, db: AsyncSession) -> Order:
@@ -123,10 +119,8 @@ class OrderService:
         Returns:
             Order: The order.
         """
-        res = await db.execute(
-            select(Order).where((Order.id == order_id) & (Order.user_id == user_id))  # type: ignore[arg-type]
-        )
-        order = res.scalar_one_or_none()
+        stmt = select(Order).where(Order.id == order_id).where(Order.user_id == user_id)
+        order = (await db.exec(stmt)).first()
         if not order:
             raise NotFoundError(f"Order {order_id} not found for user {user_id}")
         return order

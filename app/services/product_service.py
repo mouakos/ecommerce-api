@@ -5,8 +5,8 @@
 from typing import Literal
 from uuid import UUID
 
-from sqlalchemy import asc, desc, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import asc, desc, func, select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.product import Product
@@ -88,11 +88,11 @@ class ProductService:
         order_col = desc(order_col) if order_dir == "desc" else asc(order_col)
 
         # Total first
-        total = int((await db.execute(count_stmt)).scalar_one())
+        total = int((await db.exec(count_stmt)).first())
 
         # Page
-        res = await db.execute(stmt.order_by(order_col).limit(limit).offset(offset))
-        items = list(res.scalars().all())
+        res = await db.exec(stmt.order_by(order_col).limit(limit).offset(offset))
+        items = list(res.all())
         return items, total
 
     @staticmethod
@@ -214,5 +214,5 @@ class ProductService:
         stmt = select(Product).where(
             (Product.name == product_name) & (Product.category_id == category_id)
         )
-        result = await db.execute(stmt)
-        return result.scalars().first()
+        result = await db.exec(stmt)
+        return result.first()
