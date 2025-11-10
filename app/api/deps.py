@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.enums import TokenType
 from app.core.errors import UnauthorizedError
 from app.core.security import verify_token_type
+from app.db.redis import is_token_in_blocklist
 from app.db.session import get_session
 from app.models.user import User
 
@@ -32,11 +33,14 @@ async def get_current_user(
     Returns:
         User: The current user.
     """
-    user_id = verify_token_type(token, expected_type=TokenType.ACCESS)
-    if not user_id:
+    payload = verify_token_type(token, expected_type=TokenType.ACCESS)
+    if not payload:
         raise UnauthorizedError("Invalid or expired access token.")
 
-    user = await db.get(User, UUID(user_id))
+    if await is_token_in_blocklist(payload["jti"]):
+        raise UnauthorizedError("Token has been revoked.")
+
+    user = await db.get(User, UUID(payload["sub"]))
     if not user:
         raise UnauthorizedError("Invalid or expired access token.")
     return user

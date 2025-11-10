@@ -11,3 +11,4 @@ python-jose
 email-validator
 alembic
 typer
+aioredis

@@ -16,6 +16,17 @@ class Settings(BaseSettings):
         alias="TEST_DATABASE_URL",
         description="Test database connection URL",
     )
+    # redis
+    redis_host: str = Field(
+        default="localhost",
+        description="Redis server host",
+        alias="REDIS_HOST",
+    )
+    redis_port: int = Field(
+        default=6379,
+        description="Redis server port",
+        alias="REDIS_PORT",
+    )
     # auth
     secret_key: str = Field(
         default="",

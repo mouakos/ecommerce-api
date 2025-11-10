@@ -1,6 +1,8 @@
 """Security utilities for handling passwords and JWT tokens."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Any
+from uuid import uuid4
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -42,7 +44,12 @@ def create_access_token(subject: str, expires_minutes: int | None = None) -> str
     expire = datetime.now(UTC) + timedelta(
         minutes=expires_minutes or settings.access_token_expire_minutes
     )
-    payload = {"sub": str(subject), "exp": expire, "token_type": TokenType.ACCESS}
+    payload = {
+        "sub": str(subject),
+        "exp": expire,
+        "token_type": TokenType.ACCESS,
+        "jti": str(uuid4()),
+    }
     return str(jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm))
 
 
@@ -57,11 +64,16 @@ def create_refresh_token(subject: str, expires_days: int | None = None) -> str:
         str: The encoded JWT token.
     """
     expire = datetime.now(UTC) + timedelta(days=expires_days or settings.refresh_token_expire_days)
-    payload = {"sub": str(subject), "exp": expire, "token_type": TokenType.REFRESH}
+    payload = {
+        "sub": str(subject),
+        "exp": expire,
+        "token_type": TokenType.REFRESH,
+        "jti": str(uuid4()),
+    }
     return str(jwt.encode(payload, settings.secret_key, algorithm=settings.jwt_algorithm))
 
 
-def verify_token_type(token: str, expected_type: TokenType) -> str | None:
+def verify_token_type(token: str, expected_type: TokenType) -> dict[str, Any]:
     """Verify that the token is of the expected type.
 
     Args:
@@ -69,12 +81,12 @@ def verify_token_type(token: str, expected_type: TokenType) -> str | None:
         expected_type (TokenType): The expected token type.
 
     Returns:
-        str | None: The subject if the token type matches, None otherwise.
+        dict[str, Any] | None: The payload if the token type matches, None otherwise.
     """
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
-        if payload.get("token_type") == expected_type and payload.get("sub"):
-            return str(payload.get("sub"))
+        if payload.get("token_type") == expected_type and payload.get("sub") and payload.get("jti"):
+            return payload
         return None
     except JWTError:
         return None
