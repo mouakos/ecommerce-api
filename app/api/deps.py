@@ -1,31 +1,84 @@
 """API Routes dependencies."""
 
-from typing import Annotated
+from abc import ABC, abstractmethod
+from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import Depends
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, Request
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.enums import TokenType
 from app.core.errors import UnauthorizedError
-from app.core.security import verify_token_type
+from app.core.security import decode_token
 from app.db.redis import is_token_in_blocklist
 from app.db.session import get_session
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+class TokenBearer(HTTPBearer, ABC):
+    """Abstract Bearer class to verify tokens."""
+
+    def __init__(self, auto_error=True) -> None:
+        """Initialize the TokenBearer."""
+        super().__init__(auto_error=auto_error)
+
+    async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
+        """Call method to verify the token."""
+        http_auth_credentials = await super().__call__(request)
+
+        token = http_auth_credentials.credentials
+
+        token_details = decode_token(token)
+
+        if not self.token_valid(token):
+            raise UnauthorizedError("Invalid token.")
+
+        if await is_token_in_blocklist(token_details["jti"]):
+            raise UnauthorizedError("Token has been revoked.")
+
+        self.verify_token_data(token_details)
+
+        return token_details
+
+    def token_valid(self, token: str) -> bool:
+        """Check if the token is valid."""
+        token_details = decode_token(token)
+
+        return token_details is not None
+
+    @abstractmethod
+    def verify_token_data(self, token_details: dict[str, Any]) -> None:
+        """Verify the token data."""
+        pass
+
+
+class AccessTokenBearer(TokenBearer):
+    """Bearer class to verify access tokens."""
+
+    def verify_token_data(self, token_details: dict[str, Any]) -> None:
+        """Verify that the token is an access token."""
+        if token_details and token_details["refresh"]:
+            raise UnauthorizedError("Access token required.")
+
+
+class RefreshTokenBearer(TokenBearer):
+    """Bearer class to verify refresh tokens."""
+
+    def verify_token_data(self, token_details: dict[str, Any]) -> None:
+        """Verify that the token is a refresh token."""
+        if token_details and not token_details["refresh"]:
+            raise UnauthorizedError("Refresh token required.")
 
 
 async def get_current_user(
     db: Annotated[AsyncSession, Depends(get_session)],
-    token: str = Depends(oauth2_scheme),
+    token_details: Annotated[dict[str, Any], Depends(AccessTokenBearer())],
 ) -> User:
     """Get the current user from the token.
 
     Args:
         db (Annotated[AsyncSession, Depends): Database session.
-        token (str, optional): Bearer token. Defaults to Depends(oauth2_scheme).
+        token_details (dict[str, Any]): The decoded token data.
 
     Raises:
         UnauthorizedError: If the token is invalid or expired or if the user is inactive or missing.
@@ -33,16 +86,9 @@ async def get_current_user(
     Returns:
         User: The current user.
     """
-    payload = verify_token_type(token, expected_type=TokenType.ACCESS)
-    if not payload:
-        raise UnauthorizedError("Invalid or expired access token.")
-
-    if await is_token_in_blocklist(payload["jti"]):
-        raise UnauthorizedError("Token has been revoked.")
-
-    user = await db.get(User, UUID(payload["sub"]))
+    user = await db.get(User, UUID(token_details["sub"]))
     if not user:
-        raise UnauthorizedError("Invalid or expired access token.")
+        raise UnauthorizedError("Invalid token.")
     return user
 
 

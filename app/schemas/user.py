@@ -1,27 +1,33 @@
 """Schemas for user-related operations in the application."""
 
-from pydantic import EmailStr, Field
-from sqlmodel import SQLModel
+from pydantic import BaseModel, EmailStr, Field
 
-from app.schemas.common import UUIDMixin
+from app.schemas.common import TimestampMixin, UUIDMixin
 
 
-class UserCreate(SQLModel):
+class UserCreate(BaseModel):
     """Schema for creating a new user."""
 
     email: EmailStr
     password: str = Field(..., min_length=6)
 
 
-class UserRead(UUIDMixin):
+class UserLogin(UserCreate):
+    """Schema for user login."""
+
+    pass
+
+
+class UserRead(UUIDMixin, TimestampMixin):
     """Schema for reading user information."""
 
     email: str
     is_active: bool
 
 
-class Token(SQLModel):
+class Token(BaseModel):
     """Schema for authentication token response."""
 
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"

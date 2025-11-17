@@ -2,93 +2,67 @@
 
 """API routes for user authentication endpoints."""
 
-from typing import Annotated
+from datetime import timedelta
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request, Response, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, status
+from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import get_current_user, oauth2_scheme
+from app.api.deps import AccessTokenBearer, RefreshTokenBearer, get_current_user
 from app.core.config import settings
-from app.core.enums import TokenType
-from app.core.errors import UnauthorizedError
-from app.core.security import (
-    create_access_token,
-    create_refresh_token,
-    verify_token_type,
-)
-from app.db.redis import add_token_to_blocklist, is_token_in_blocklist
+from app.core.security import create_access_token
+from app.db.redis import add_token_to_blocklist
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.user import Token, UserCreate, UserRead
+from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
-REFRESH_COOKIE_NAME = "refresh_token"
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
-async def register(data: UserCreate, db: Annotated[AsyncSession, Depends(get_session)]) -> UserRead:
-    """Register a new user."""
+async def create_new_user(
+    data: UserCreate, db: Annotated[AsyncSession, Depends(get_session)]
+) -> UserRead:
+    """Register a new user and return the created user."""
     return await AuthService.create_user(db, data)
 
 
 @router.post("/login", response_model=Token)
 async def login(
-    response: Response,
-    form: Annotated[OAuth2PasswordRequestForm, Depends()],
+    data: UserLogin,
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> Token:
-    """Authenticate a user and return a JWT token."""
-    user = await AuthService.authenticate_user(db, form.username, form.password)
+    """Authenticate a user and return access and refresh tokens."""
+    user = await AuthService.authenticate_user(db, data.email, data.password)
     access_token = create_access_token(subject=str(user.id))
-    refresh_token = create_refresh_token(subject=str(user.id))
-    response.set_cookie(
-        key=REFRESH_COOKIE_NAME,
-        value=refresh_token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=settings.refresh_token_expire_days * 24 * 3600,  # convert days to seconds,
+    refresh_token = create_access_token(
+        subject=str(user.id),
+        expiry=timedelta(days=settings.refresh_token_expire_days),
+        refresh=True,
+    )
+    return Token(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def revoke_access_token(
+    token_details: Annotated[dict[str, Any], Depends(AccessTokenBearer())],
+) -> None:
+    """Logout the current user by revoking the access token."""
+    await add_token_to_blocklist(token_details["jti"])
+    return JSONResponse(
+        content={"message": "Logged Out Successfully"}, status_code=status.HTTP_200_OK
     )
 
-    return Token(access_token=access_token)
 
-
-@router.post("/refresh-token", response_model=Token)
-async def refresh_token(
-    request: Request,
+@router.get("/refresh-token", response_model=Token)
+async def get_new_access_token(
+    token_details: Annotated[dict[str, Any], Depends(RefreshTokenBearer())],
 ) -> Token:
-    """Refresh the access token using a valid refresh token."""
-    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
-    if not refresh_token:
-        raise UnauthorizedError("Refresh token missing.")
-
-    payload = verify_token_type(refresh_token, expected_type=TokenType.REFRESH)
-    if not payload:
-        raise UnauthorizedError("Invalid or expired refresh token.")
-
-    if await is_token_in_blocklist(payload["jti"]):
-        raise UnauthorizedError("Token has been revoked.")
-
-    access_token = create_access_token(subject=payload["sub"])
-    return Token(access_token=access_token)
-
-
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(
-    request: Request, response: Response, access_token: str = Depends(oauth2_scheme)
-) -> None:
-    """Logout the current user by revoking the refresh token."""
-    # Get the refresh token from the request cookies
-    refresh_token = request.cookies.get(REFRESH_COOKIE_NAME)
-    if not refresh_token:
-        raise UnauthorizedError("Refresh token missing.")
-
-    # Revoke both tokens
-    await add_token_to_blocklist(refresh_token["jti"])
-    await add_token_to_blocklist(access_token["jti"])
-    response.delete_cookie(REFRESH_COOKIE_NAME)
+    """Generate a new access token using a valid refresh token."""
+    new_access_token = create_access_token(subject=token_details["sub"])
+    return Token(access_token=new_access_token)
 
 
 @router.get("/me", response_model=UserRead)

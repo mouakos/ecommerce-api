@@ -18,6 +18,19 @@ services:
     networks:
       - app-network
 
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks:
+      - app-network
+
   api:
     build: .
     restart: unless-stopped
@@ -28,9 +41,13 @@ services:
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS}
       JWT_ALGORITHM: ${JWT_ALGORITHM}
+      REDIS_URL: redis://redis:6379/0
     depends_on:
+      redis:
+        condition: service_healthy
       db:
         condition: service_healthy
+
     ports:
       - "8000:8000"
     networks:

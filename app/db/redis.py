@@ -1,10 +1,10 @@
 """Redis connection and token blocklist management."""
 
-import aioredis
+from redis.asyncio import Redis
 
 from app.core.config import settings
 
-token_blocklist = aioredis.StrictRedis(host=settings.redis_host, port=settings.redis_port, db=0)
+token_blocklist: Redis = Redis.from_url(settings.redis_url, decode_responses=True)
 
 JTI_EXPIRY = 3600  # seconds (1 hour)
 
@@ -28,4 +28,4 @@ async def add_token_to_blocklist(jti: str) -> None:
     Args:
         jti (str): The unique identifier of the token.
     """
-    await token_blocklist.set(jti, "revoked", ex=JTI_EXPIRY)
+    await token_blocklist.set(jti, value="", ex=JTI_EXPIRY)
