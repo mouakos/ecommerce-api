@@ -18,13 +18,14 @@ from app.models.user import User
 class TokenBearer(HTTPBearer, ABC):
     """Abstract Bearer class to verify tokens."""
 
-    def __init__(self, auto_error=True) -> None:
+    def __init__(self) -> None:
         """Initialize the TokenBearer."""
-        super().__init__(auto_error=auto_error)
+        super().__init__()
 
     async def __call__(self, request: Request) -> HTTPAuthorizationCredentials | None:
         """Call method to verify the token."""
         http_auth_credentials = await super().__call__(request)
+        assert http_auth_credentials is not None
 
         token = http_auth_credentials.credentials
 
@@ -33,12 +34,14 @@ class TokenBearer(HTTPBearer, ABC):
         if not self.token_valid(token):
             raise UnauthorizedError("Invalid token.")
 
+        assert token_details is not None
+
         if await is_token_in_blocklist(token_details["jti"]):
             raise UnauthorizedError("Token has been revoked.")
 
         self.verify_token_data(token_details)
 
-        return token_details
+        return token_details  # type: ignore [return-value]
 
     def token_valid(self, token: str) -> bool:
         """Check if the token is valid."""

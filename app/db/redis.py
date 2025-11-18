@@ -13,7 +13,7 @@ def get_redis() -> Redis:
     Returns:
         Redis: A Redis asyncio client.
     """
-    return Redis.from_url(settings.redis_url, decode_responses=True)
+    return Redis.from_url(settings.redis_url, decode_responses=True)  # type: ignore [no-any-return]
 
 
 async def is_token_in_blocklist(jti: str) -> bool:

@@ -30,7 +30,9 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bool(pwd_context.verify(plain, hashed))
 
 
-def create_access_token(subject: str, expiry: timedelta = None, refresh: bool = False) -> str:
+def create_access_token(
+    subject: str, expiry: timedelta | None = None, refresh: bool = False
+) -> str:
     """Create a new access token.
 
     Args:
@@ -61,10 +63,6 @@ def decode_token(token: str) -> dict[str, Any] | None:
         dict[str, Any] | None: The decoded payload or None if decoding fails.
     """
     try:
-        return jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.jwt_algorithm],
-        )
+        return jwt.decode(token, settings.secret_key, [settings.jwt_algorithm])  # type: ignore [no-any-return]
     except JWTError:
         return None
