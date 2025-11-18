@@ -4,9 +4,16 @@ from redis.asyncio import Redis
 
 from app.core.config import settings
 
-token_blocklist: Redis = Redis.from_url(settings.redis_url, decode_responses=True)
-
 JTI_EXPIRY = 3600  # seconds (1 hour)
+
+
+def get_redis() -> Redis:
+    """Create a new Redis client instance.
+
+    Returns:
+        Redis: A Redis asyncio client.
+    """
+    return Redis.from_url(settings.redis_url, decode_responses=True)
 
 
 async def is_token_in_blocklist(jti: str) -> bool:
@@ -18,7 +25,9 @@ async def is_token_in_blocklist(jti: str) -> bool:
     Returns:
         bool: True if the token is revoked, False otherwise.
     """
-    is_revoked = await token_blocklist.get(jti)
+    redis = get_redis()
+    is_revoked = await redis.get(jti)
+    await redis.close()
     return is_revoked is not None
 
 
@@ -28,4 +37,6 @@ async def add_token_to_blocklist(jti: str) -> None:
     Args:
         jti (str): The unique identifier of the token.
     """
-    await token_blocklist.set(jti, value="", ex=JTI_EXPIRY)
+    redis = get_redis()
+    await redis.set(jti, value="", ex=JTI_EXPIRY)
+    await redis.close()
