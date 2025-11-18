@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from tests.factories import ProductFactory
 
 PROD_BASE = "/api/v1/products"
-REV_BASE = "/api/v1"  # combined prefix used in review routes
+REV_BASE = "/api/v1"
 
 
 async def create_review(
@@ -41,7 +41,7 @@ async def test_create_review_duplicate_conflict(auth_client: AsyncClient, db_ses
     assert first.status_code == 201
     dup = await create_review(auth_client, str(product.id), 3, "Second")
     assert dup.status_code == 409
-    assert dup.json()["detail"].lower().startswith("user")
+    assert dup.json()["detail"] == "User has already reviewed this product."
 
 
 @pytest.mark.asyncio
@@ -135,6 +135,7 @@ async def test_get_review_respects_visibility(
     # Regular user cannot fetch hidden admin review
     r_hidden = await auth_client.get(f"{REV_BASE}/reviews/{admin_rev_id}")
     assert r_hidden.status_code == 404
+    assert r_hidden.json()["detail"] == "Review not found."
 
     # Admin can fetch hidden review
     r_admin_fetch = await auth_admin_client.get(f"{REV_BASE}/reviews/{admin_rev_id}")
@@ -151,7 +152,7 @@ async def test_update_review_author_success(auth_client: AsyncClient, db_session
     await db_session.flush()
     created = await create_review(auth_client, str(product.id), 4, "Orig")
     review_id = created.json()["id"]
-    r_upd = await auth_client.put(
+    r_upd = await auth_client.patch(
         f"{REV_BASE}/reviews/{review_id}", json={"comment": "Edited", "rating": 5}
     )
     assert r_upd.status_code == 200
@@ -166,8 +167,9 @@ async def test_update_review_unauthorized_other_user(
     await db_session.flush()
     created = await create_review(auth_client, str(product.id), 4, "Mine")
     review_id = created.json()["id"]
-    r_other = await auth_client1.put(f"{REV_BASE}/reviews/{review_id}", json={"rating": 2})
-    assert r_other.status_code == 401
+    r_other = await auth_client1.patch(f"{REV_BASE}/reviews/{review_id}", json={"rating": 2})
+    assert r_other.status_code == 403
+    assert r_other.json()["detail"] == "You do not have enough permissions to perform this action."
 
 
 # ---------- DELETE ----------
@@ -183,6 +185,7 @@ async def test_delete_review_author_success(auth_client: AsyncClient, db_session
     assert r_del.status_code == 204
     r_get = await auth_client.get(f"{REV_BASE}/reviews/{review_id}")
     assert r_get.status_code == 404
+    assert r_get.json()["detail"] == "Review not found."
 
 
 # ---------- AVERAGE SUMMARY ENDPOINT ----------

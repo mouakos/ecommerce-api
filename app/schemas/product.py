@@ -4,7 +4,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import TimestampMixin, UUIDMixin
+from app.schemas.base import TimestampMixin, UUIDMixin
+from app.schemas.review import ReviewRead
 
 
 class ProductCreate(BaseModel):
@@ -21,6 +22,14 @@ class ProductRead(ProductCreate, UUIDMixin, TimestampMixin):
     """Schema for reading product information."""
 
     pass
+
+
+class ProductReadDetail(ProductRead, UUIDMixin, TimestampMixin):
+    """Schema for reading product information with detailed reviews."""
+
+    reviews: list[ReviewRead] = Field(
+        default_factory=list, description="List of reviews for the product"
+    )
 
 
 class ProductUpdate(BaseModel):

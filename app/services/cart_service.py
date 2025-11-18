@@ -5,7 +5,10 @@ from uuid import UUID
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import (
+    CartItemNotFoundError,
+    InsufficientStockError,
+)
 from app.models.cart import Cart, CartItem
 from app.schemas.cart import CartItemCreate
 from app.services.product_service import ProductService
@@ -19,31 +22,30 @@ class CartService:
         """Get the cart for a specific user.
 
         Args:
-            user_id (UUID): The ID of the user to retrieve the cart for.
-            db (AsyncSession): The database session to use.
+            user_id (UUID): User ID.
+            db (AsyncSession): Database session.
 
         Returns:
-            Cart | None: The cart for the user, or None if not found.
+            Cart | None: User cart or None.
         """
         res = await db.exec(select(Cart).where(Cart.user_id == user_id))
         return res.first()
 
     @staticmethod
     async def get_or_create_user_cart(user_id: UUID, db: AsyncSession) -> Cart:
-        """Get or create a cart for a specific user.
+        """Get or create a cart for a user.
 
         Args:
-            user_id (UUID): The ID of the user to retrieve or create the cart for.
-            db (AsyncSession): The database session to use.
+            user_id (UUID): User ID.
+            db (AsyncSession): Database session.
 
         Returns:
-            Cart: The cart for the user.
+            Cart: Existing or new cart.
         """
         cart = await CartService.get_user_cart(user_id, db)
         if cart:
             return cart
         cart = Cart(user_id=user_id)
-
         db.add(cart)
         await db.flush()
         await db.refresh(cart)
@@ -51,11 +53,11 @@ class CartService:
 
     @staticmethod
     async def clear_user_cart(user_id: UUID, db: AsyncSession) -> None:
-        """Clear the cart for a specific user.
+        """Clear a user's cart.
 
         Args:
-            user_id (UUID): The ID of the user to clear the cart for.
-            db (AsyncSession): The database session to use.
+            user_id (UUID): User ID.
+            db (AsyncSession): Database session.
         """
         cart = await CartService.get_user_cart(user_id, db)
         if not cart:
@@ -68,16 +70,16 @@ class CartService:
         """Add an item to the user's cart.
 
         Args:
-            user_id (UUID): The ID of the user who owns the cart.
-            data (CartItemCreate): The data for the cart item to add.
-            db (AsyncSession): The database session to use.
+            user_id (UUID): User ID.
+            data (CartItemCreate): Item data.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If product is not found.
-            ConflictError: If there is not enough stock for the item.
+            ProductNotFoundError: If the product does not exist.
+            InsufficientStockError: If requested quantity exceeds stock.
 
         Returns:
-            Cart : The updated cart.
+            Cart: Updated cart.
         """
         cart = await CartService.get_or_create_user_cart(user_id, db)
 
@@ -91,7 +93,7 @@ class CartService:
         new_qty = current_qty + data.quantity
 
         if new_qty > product.stock:
-            raise ConflictError("Insufficient stock.")
+            raise InsufficientStockError()
 
         if item:
             item.quantity = new_qty
@@ -100,7 +102,7 @@ class CartService:
                 cart_id=cart.id,
                 product_id=product.id,
                 quantity=data.quantity,
-                unit_price=product.price,  # snapshot
+                unit_price=product.price,
             )
             db.add(item)
 
@@ -112,26 +114,27 @@ class CartService:
     async def update_item_to_user_cart(
         user_id: UUID, item_id: UUID, quantity: int | None, db: AsyncSession
     ) -> Cart:
-        """Update the quantity of an item in the user's cart.
+        """Update quantity of an item in the user's cart.
 
         Args:
-            user_id (UUID): The ID of the user who owns the cart.
-            item_id (UUID): The ID of the item to update.
-            quantity (int | None): The new quantity for the item.
-            db (AsyncSession): The database session to use.
+            user_id (UUID): User ID.
+            item_id (UUID): Cart item ID.
+            quantity (int | None): New quantity (None => no change).
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If item is not found.
-            ConflictError: If there is not enough stock for the item.
+            CartItemNotFoundError: If the item is not in the user's cart.
+            ProductNotFoundError: If the related product does not exist.
+            InsufficientStockError: If requested quantity exceeds stock.
 
         Returns:
-            Cart: The updated cart.
+            Cart: Updated cart.
         """
         cart = await CartService.get_or_create_user_cart(user_id, db)
 
         item = await db.get(CartItem, item_id)
         if not item or item.cart_id != cart.id:
-            raise NotFoundError("Item not found in cart.")
+            raise CartItemNotFoundError()
 
         if quantity is None:
             return cart
@@ -144,7 +147,7 @@ class CartService:
 
         product = await ProductService.get(item.product_id, db)
         if quantity > product.stock:
-            raise ConflictError("Insufficient stock.")
+            raise InsufficientStockError()
 
         item.quantity = quantity
         await db.flush()
@@ -156,12 +159,12 @@ class CartService:
         """Remove an item from a user's cart.
 
         Args:
-            user_id (UUID): The ID of the user who owns the cart.
-            item_id (UUID): The ID of the item to remove.
-            db (AsyncSession): The database session to use.
+            user_id (UUID): User ID.
+            item_id (UUID): Cart item ID.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the cart or item is not found.
+            CartItemNotFoundError: If the item is not in the user's cart.
         """
         cart = await CartService.get_user_cart(user_id, db)
         if not cart:
@@ -169,7 +172,7 @@ class CartService:
 
         item = await db.get(CartItem, item_id)
         if not item or item.cart_id != cart.id:
-            raise NotFoundError("Item not found in cart.")
+            raise CartItemNotFoundError()
 
         await db.delete(item)
         await db.flush()

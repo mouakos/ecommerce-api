@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker, get_current_user
-from app.core.errors import NotFoundError
+from app.core.errors import ReviewNotFoundError
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.common import Page
+from app.schemas.base import Page
 from app.schemas.review import (
     ReviewAdminUpdate,
     ReviewCreate,
@@ -74,11 +74,11 @@ async def get_review(
     if not review.is_visible and (
         current_user.id != review.user_id and current_user.role != "admin"
     ):
-        raise NotFoundError("Review not found.")
+        raise ReviewNotFoundError()
     return review
 
 
-@router.put("/reviews/{review_id}", response_model=ReviewRead)
+@router.patch("/reviews/{review_id}", response_model=ReviewRead)
 async def update_review(
     review_id: UUID,
     data: ReviewUpdate,

@@ -9,8 +9,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker
 from app.db.session import get_session
+from app.schemas.base import Page
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
-from app.schemas.common import Page
 from app.services.category_service import CategoryService
 
 router = APIRouter(prefix="/api/v1/categories", tags=["Categories"])
@@ -50,7 +50,7 @@ async def get_category(
     return await CategoryService.get(category_id, db)
 
 
-@router.put("/{category_id}", response_model=CategoryRead, dependencies=[role_checker])
+@router.patch("/{category_id}", response_model=CategoryRead, dependencies=[role_checker])
 async def update_category(
     category_id: UUID, data: CategoryUpdate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> CategoryRead:

@@ -6,7 +6,8 @@ from uuid import UUID
 
 from sqlmodel import Column, DateTime, Field, Relationship, UniqueConstraint
 
-from app.models.common import TimestampMixin, UUIDMixin, utcnow
+from app.models.base import TimestampMixin, UUIDMixin
+from app.utils.time import utcnow
 
 if TYPE_CHECKING:
     from app.models.product import Product

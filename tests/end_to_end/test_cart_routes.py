@@ -19,7 +19,7 @@ async def test_cart_requires_auth(client: AsyncClient):
     assert (
         await client.post(f"{BASE}/items", json={"product_id": str(uuid4()), "quantity": 1})
     ).status_code == 403
-    assert (await client.put(f"{BASE}/items/{uuid4()}", json={"quantity": 1})).status_code == 403
+    assert (await client.patch(f"{BASE}/items/{uuid4()}", json={"quantity": 1})).status_code == 403
     assert (await client.delete(f"{BASE}/items/{uuid4()}")).status_code == 403
     assert (await client.delete(f"{BASE}/")).status_code == 403
 
@@ -78,7 +78,7 @@ async def test_add_item_blocked_by_stock(auth_client: AsyncClient, db_session):
     r2 = await auth_client.post(
         f"{BASE}/items", json={"product_id": str(product.id), "quantity": 1}
     )
-    assert r2.status_code == 409
+    assert r2.status_code == 400
     assert r2.json()["detail"] == "Insufficient stock."
 
 
@@ -115,21 +115,21 @@ async def test_update_item_quantity_and_remove_when_zero(auth_client: AsyncClien
     item_id = next(it["id"] for it in added.json()["items"] if it["product_id"] == str(product.id))
 
     # Update qty -> 5
-    r_upd = await auth_client.put(f"{BASE}/items/{item_id}", json={"quantity": 5})
+    r_upd = await auth_client.patch(f"{BASE}/items/{item_id}", json={"quantity": 5})
     assert r_upd.status_code == 200
     assert next(it for it in r_upd.json()["items"] if it["id"] == item_id)["quantity"] == 5
 
     # Set qty -> 0 (remove)
-    r_zero = await auth_client.put(f"{BASE}/items/{item_id}", json={"quantity": 0})
+    r_zero = await auth_client.patch(f"{BASE}/items/{item_id}", json={"quantity": 0})
     assert r_zero.status_code == 200
     assert not any(it["id"] == item_id for it in r_zero.json()["items"])
 
 
 @pytest.mark.asyncio
 async def test_update_item_not_found(auth_client: AsyncClient):
-    r = await auth_client.put(f"{BASE}/items/{uuid4()}", json={"quantity": 3})
+    r = await auth_client.patch(f"{BASE}/items/{uuid4()}", json={"quantity": 3})
     assert r.status_code == 404
-    assert r.json()["detail"] == "Item not found in cart."
+    assert r.json()["detail"] == "Cart item not found."
 
 
 @pytest.mark.asyncio
@@ -144,12 +144,12 @@ async def test_update_item_blocked_by_stock(auth_client: AsyncClient, db_session
     item_id = next(it["id"] for it in added.json()["items"] if it["product_id"] == str(product.id))
 
     # try set quantity to 4 (> stock 3)
-    r_upd = await auth_client.put(f"{BASE}/items/{item_id}", json={"quantity": 4})
-    assert r_upd.status_code == 409
+    r_upd = await auth_client.patch(f"{BASE}/items/{item_id}", json={"quantity": 4})
+    assert r_upd.status_code == 400
     assert r_upd.json()["detail"] == "Insufficient stock."
 
     # set to 3 -> ok
-    r_ok = await auth_client.put(f"{BASE}/items/{item_id}", json={"quantity": 3})
+    r_ok = await auth_client.patch(f"{BASE}/items/{item_id}", json={"quantity": 3})
     assert r_ok.status_code == 200
     assert next(it for it in r_ok.json()["items"] if it["id"] == item_id)["quantity"] == 3
 
@@ -170,7 +170,7 @@ async def test_remove_item_success_then_404(auth_client: AsyncClient, db_session
 
     r_del_again = await auth_client.delete(f"{BASE}/items/{item_id}")
     assert r_del_again.status_code == 404
-    assert r_del_again.json()["detail"] == "Item not found in cart."
+    assert r_del_again.json()["detail"] == "Cart item not found."
 
 
 # ---------------- Clear Cart (good & idempotent) ----------------

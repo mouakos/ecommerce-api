@@ -43,7 +43,7 @@ async def test_register_duplicate_email(client: AsyncClient):
     _ = await register(client, "a@example.com", "secret")
     r2 = await register(client, "a@example.com", "secret")
     assert r2.status_code == 409
-    assert r2.json()["detail"] == "Email already registered."
+    assert r2.json()["detail"] == "User with email already exists."
 
 
 @pytest.mark.asyncio
@@ -81,16 +81,16 @@ async def test_login_success_and_me(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient):
     await register(client, "d@example.com", "secret")
-    r = await login_json(client, "d@example.com", "badpassword")
+    r = await login_json(client, "d@example.com", "bad-password")
     assert r.status_code == 400
-    assert r.json()["detail"] in ("Invalid email or password.",)
+    assert r.json()["detail"] == "Invalid Email or Password."
 
 
 @pytest.mark.asyncio
 async def test_login_unknown_user(client: AsyncClient):
     r = await login_json(client, "nope@example.com", "whatever")
     assert r.status_code == 400
-    assert r.json()["detail"] in ("Invalid email or password.",)
+    assert r.json()["detail"] == "Invalid Email or Password."
 
 
 # ---------------- Me (protected) ----------------
@@ -108,7 +108,7 @@ async def test_me_with_invalid_token(client: AsyncClient):
     r = await client.get(f"{BASE}/me", headers={"Authorization": "Bearer not-a-real-token"})
     assert r.status_code == 401
     # New error message per TokenBearer implementation
-    assert r.json()["detail"] == "Invalid token."
+    assert r.json()["detail"] == "Token is invalid or expired."
 
 
 @pytest.mark.asyncio
@@ -119,7 +119,7 @@ async def test_me_with_tampered_token(client: AsyncClient):
     bad = token[:-1] + ("a" if token[-1] != "a" else "b")
     r = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {bad}"})
     assert r.status_code == 401
-    assert r.json()["detail"] == "Invalid token."
+    assert r.json()["detail"] == "Token is invalid or expired."
 
 
 @pytest.mark.asyncio
@@ -136,4 +136,37 @@ async def test_logout_revokes_token(client: AsyncClient):
     # Attempt to reuse token
     r_me = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
     assert r_me.status_code == 401
-    assert r_me.json()["detail"] == "Token has been revoked."
+    assert r_me.json()["detail"] == "Token is invalid or has been revoked."
+
+
+# ---------------- Token Type Requirements ----------------
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_endpoint_requires_refresh_token(client: AsyncClient):
+    """Using an access token on /refresh-token should raise RefreshTokenRequiredError (400)."""
+    await register(client, "refresh-mismatch@example.com", "secret")
+    login_resp = await login_json(client, "refresh-mismatch@example.com", "secret")
+    assert login_resp.status_code == 200
+    access = login_resp.json()["access_token"]
+    # Call refresh-token with ACCESS token (wrong type)
+    r = await client.get(f"{BASE}/refresh-token", headers={"Authorization": f"Bearer {access}"})
+    assert r.status_code == 400
+    body = r.json()
+    assert body["detail"] == "Please provide a valid refresh token."
+    assert body["error_code"] == "refresh_token_required"
+
+
+@pytest.mark.asyncio
+async def test_logout_requires_access_token(client: AsyncClient):
+    """Using a refresh token on /logout should raise AccessTokenRequiredError (400)."""
+    await register(client, "access-mismatch@example.com", "secret")
+    login_resp = await login_json(client, "access-mismatch@example.com", "secret")
+    assert login_resp.status_code == 200
+    refresh = login_resp.json()["refresh_token"]
+    # Call logout with REFRESH token (wrong type)
+    r = await client.post(f"{BASE}/logout", headers={"Authorization": f"Bearer {refresh}"})
+    assert r.status_code == 400
+    body = r.json()
+    assert body["detail"] == "Please provide a valid access token."
+    assert body["error_code"] == "access_token_required"

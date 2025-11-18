@@ -36,7 +36,7 @@ async def add_item_to_my_cart(
     return await CartService.add_item_to_user_cart(current_user.id, data, db)
 
 
-@router.put("/items/{item_id}", response_model=CartRead)
+@router.patch("/items/{item_id}", response_model=CartRead)
 async def update_my_cart_item(
     item_id: UUID,
     data: CartItemUpdate,

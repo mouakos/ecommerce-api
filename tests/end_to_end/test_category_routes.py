@@ -39,7 +39,8 @@ async def test_create_category_duplicate_name_conflict(auth_admin_client: AsyncC
     r1 = await auth_admin_client.post(f"{BASE}/", json={"name": "UniqueCat"})
     r2 = await auth_admin_client.post(f"{BASE}/", json={"name": "UniqueCat"})
     assert r1.status_code == 201, r1.text
-    assert r2.status_code == 409, r2.text
+    assert r2.status_code == 409
+    assert r2.json()["detail"] == "Category already exists."
 
 
 # ---------- LIST ----------
@@ -167,7 +168,7 @@ async def test_get_category_not_found(client: AsyncClient):
 async def test_update_category_success(auth_admin_client: AsyncClient, db_session):
     created = CategoryFactory.create(name="OldName")
     await db_session.flush()
-    r = await auth_admin_client.put(
+    r = await auth_admin_client.patch(
         f"{BASE}/{created.id}",
         json={"name": "NewName"},
     )
@@ -177,7 +178,7 @@ async def test_update_category_success(auth_admin_client: AsyncClient, db_sessio
 
 @pytest.mark.asyncio
 async def test_update_category_not_found(auth_admin_client: AsyncClient):
-    r = await auth_admin_client.put(f"{BASE}/{uuid4()}", json={"name": "Whatever"})
+    r = await auth_admin_client.patch(f"{BASE}/{uuid4()}", json={"name": "Whatever"})
     assert r.status_code == 404
     assert r.json()["detail"] == "Category not found."
 
@@ -189,9 +190,9 @@ async def test_update_category_duplicate_name_conflict(auth_admin_client: AsyncC
     await db_session.flush()
 
     # Try renaming Decoration -> Electronics
-    r = await auth_admin_client.put(f"{BASE}/{b.id}", json={"name": "Electronics"})
+    r = await auth_admin_client.patch(f"{BASE}/{b.id}", json={"name": "Electronics"})
     assert r.status_code == 409
-    assert r.json()["detail"] == "Category with this name already exists."
+    assert r.json()["detail"] == "Category already exists."
 
 
 # ---------- DELETE ----------

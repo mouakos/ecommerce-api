@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from app.schemas.common import TimestampMixin, UUIDMixin
+from app.schemas.base import TimestampMixin, UUIDMixin
 
 
 class OrderItemRead(UUIDMixin):

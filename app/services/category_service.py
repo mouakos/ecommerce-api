@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import CategoryAlreadyExistsError, CategoryNotFoundError
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 
@@ -17,33 +17,27 @@ class CategoryService:
     async def list(
         db: AsyncSession, *, limit: int, offset: int, search: str | None = None
     ) -> tuple[list[Category], int]:
-        """List all categories.
+        """List categories with pagination and optional search.
 
         Args:
-            db (AsyncSession): The database session.
-            limit (int): The number of items per page.
-            offset (int): The offset for pagination.
-            search (str): The search term for category names.
+            db (AsyncSession): Database session.
+            limit (int): Page size.
+            offset (int): Offset.
+            search (str | None): Name search.
 
         Returns:
-            Tuple[list[Category], int]: A tuple containing the list of categories and the total count.
+            tuple[list[Category], int]: Items and total count.
         """
         stmt = select(Category)
-
-        # total count
         count_stmt = select(func.count()).select_from(Category)
 
-        # page items
         stmt = select(Category).order_by(Category.name).limit(limit).offset(offset)
         if search:
             pattern = f"%{search.lower()}%"
             stmt = stmt.where(func.lower(Category.name).like(pattern))
             count_stmt = count_stmt.where(func.lower(Category.name).like(pattern))
 
-        # total
         total = (await db.exec(count_stmt)).one()
-
-        # items
         res = await db.exec(stmt.order_by(Category.name).limit(limit).offset(offset))
         items = list(res.all())
         return items, total
@@ -53,18 +47,18 @@ class CategoryService:
         """Create a new category.
 
         Args:
-            data (CategoryCreate): The category data to create.
-            db (AsyncSession): The database session.
+            data (CategoryCreate): Category data.
+            db (AsyncSession): Database session.
 
         Raises:
-            ConflictError: If a category with the same name already exists.
+            CategoryAlreadyExistsError: If a category with the same name exists.
 
         Returns:
-            Category: The created category.
+            Category: Created category.
         """
         category = await CategoryService.get_by_name(data.name, db)
         if category:
-            raise ConflictError("Category with this name already exists.")
+            raise CategoryAlreadyExistsError()
 
         new_category = Category(**data.model_dump())
         db.add(new_category)
@@ -77,44 +71,44 @@ class CategoryService:
         """Get a category by ID.
 
         Args:
-            category_id (UUID): The ID of the category to retrieve.
-            db (AsyncSession): The database session.
+            category_id (UUID): Category ID.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the category is not found.
+            CategoryNotFoundError: If the category does not exist.
 
         Returns:
-            Category: The category if found, None otherwise.
+            Category: Retrieved category.
         """
         category = await db.get(Category, category_id)
         if not category:
-            raise NotFoundError("Category not found.")
+            raise CategoryNotFoundError()
         return category
 
     @staticmethod
     async def update(category_id: UUID, data: CategoryUpdate, db: AsyncSession) -> Category:
-        """Update a category by ID.
+        """Update a category.
 
         Args:
-            category_id (UUID): The ID of the category to update.
-            data (CategoryUpdate): The updated category data.
-            db (AsyncSession): The database session.
+            category_id (UUID): Category ID.
+            data (CategoryUpdate): Update data.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the category is not found.
-            ConflictError: If a category with the same name already exists.
+            CategoryNotFoundError: If the category does not exist.
+            CategoryAlreadyExistsError: If new name duplicates another category.
 
         Returns:
-            Category: The updated category if found, None otherwise.
+            Category: Updated category.
         """
         category = await db.get(Category, category_id)
         if not category:
-            raise NotFoundError("Category not found.")
+            raise CategoryNotFoundError()
 
         if data.name is not None:
             existing_category = await CategoryService.get_by_name(data.name, db)
             if existing_category and existing_category.id != category.id:
-                raise ConflictError("Category with this name already exists.")
+                raise CategoryAlreadyExistsError()
 
         for k, v in data.model_dump(exclude_unset=True).items():
             setattr(category, k, v)
@@ -125,21 +119,18 @@ class CategoryService:
 
     @staticmethod
     async def delete(category_id: UUID, db: AsyncSession) -> None:
-        """Delete a category by ID.
+        """Delete a category.
 
         Args:
-            category_id (UUID): The ID of the category to delete.
-            db (AsyncSession): The database session.
+            category_id (UUID): Category ID.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the category is not found.
-
-        Returns:
-            None
+            CategoryNotFoundError: If the category does not exist.
         """
         category = await db.get(Category, category_id)
         if category is None:
-            raise NotFoundError("Category not found.")
+            raise CategoryNotFoundError()
         await db.delete(category)
         await db.flush()
 
@@ -148,11 +139,11 @@ class CategoryService:
         """Get a category by name.
 
         Args:
-            name (str): The name of the category to retrieve.
-            db (AsyncSession): The database session.
+            name (str): Category name.
+            db (AsyncSession): Database session.
 
         Returns:
-            Category | None: The category if found, None otherwise.
+            Category | None: Matching category or None.
         """
         stmt = select(Category).where(Category.name == name)
         result = await db.exec(stmt)

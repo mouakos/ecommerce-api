@@ -9,8 +9,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker
 from app.db.session import get_session
-from app.schemas.common import Page
-from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
+from app.schemas.base import Page
+from app.schemas.product import ProductCreate, ProductRead, ProductReadDetail, ProductUpdate
 from app.schemas.review import AverageReview
 from app.services.product_service import ProductService
 from app.services.review_service import ReviewService
@@ -60,13 +60,13 @@ async def get_product_review_summary(
 
 @router.post(
     "/",
-    response_model=ProductRead,
+    response_model=ProductReadDetail,
     status_code=status.HTTP_201_CREATED,
     dependencies=[role_checker],
 )
 async def create_product(
     data: ProductCreate, db: Annotated[AsyncSession, Depends(get_session)]
-) -> ProductRead:
+) -> ProductReadDetail:
     """Create a new product."""
     return await ProductService.create(data, db)
 
@@ -79,7 +79,7 @@ async def get_product(
     return await ProductService.get(product_id, db)
 
 
-@router.put("/{product_id}", response_model=ProductRead, dependencies=[role_checker])
+@router.patch("/{product_id}", response_model=ProductRead, dependencies=[role_checker])
 async def update_product(
     product_id: UUID, data: ProductUpdate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> ProductRead:
