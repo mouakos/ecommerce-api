@@ -2,25 +2,28 @@
 
 from collections.abc import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from sqlmodel import SQLModel
+from sqlalchemy.ext.asyncio import AsyncEngine
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel, create_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
 from app.models import *  # noqa: F403
 
-async_engine = create_async_engine(
-    url=settings.database_url,
-    echo=True,
+async_engine = AsyncEngine(
+    create_engine(
+        url=settings.database_url,
+        echo=True,
+    )
 )
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Get a database session for the duration of a request."""
-    session = async_sessionmaker(bind=async_engine, expire_on_commit=False)
+    session = sessionmaker(bind=async_engine, class_=AsyncSession, expire_on_commit=False)  # type: ignore [call-overload]
     async with session() as s:
         try:
-            yield s  # type: ignore [misc]
+            yield s
             await s.commit()
         finally:
             await s.close()
