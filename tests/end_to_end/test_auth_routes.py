@@ -137,3 +137,36 @@ async def test_logout_revokes_token(client: AsyncClient):
     r_me = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
     assert r_me.status_code == 401
     assert r_me.json()["detail"] == "Token is invalid or has been revoked."
+
+
+# ---------------- Token Type Requirements ----------------
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_endpoint_requires_refresh_token(client: AsyncClient):
+    """Using an access token on /refresh-token should raise RefreshTokenRequiredError (400)."""
+    await register(client, "refresh-mismatch@example.com", "secret")
+    login_resp = await login_json(client, "refresh-mismatch@example.com", "secret")
+    assert login_resp.status_code == 200
+    access = login_resp.json()["access_token"]
+    # Call refresh-token with ACCESS token (wrong type)
+    r = await client.get(f"{BASE}/refresh-token", headers={"Authorization": f"Bearer {access}"})
+    assert r.status_code == 400
+    body = r.json()
+    assert body["detail"] == "Please provide a valid refresh token."
+    assert body["error_code"] == "refresh_token_required"
+
+
+@pytest.mark.asyncio
+async def test_logout_requires_access_token(client: AsyncClient):
+    """Using a refresh token on /logout should raise AccessTokenRequiredError (400)."""
+    await register(client, "access-mismatch@example.com", "secret")
+    login_resp = await login_json(client, "access-mismatch@example.com", "secret")
+    assert login_resp.status_code == 200
+    refresh = login_resp.json()["refresh_token"]
+    # Call logout with REFRESH token (wrong type)
+    r = await client.post(f"{BASE}/logout", headers={"Authorization": f"Bearer {refresh}"})
+    assert r.status_code == 400
+    body = r.json()
+    assert body["detail"] == "Please provide a valid access token."
+    assert body["error_code"] == "access_token_required"
