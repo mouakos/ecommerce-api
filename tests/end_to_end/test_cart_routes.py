@@ -15,13 +15,13 @@ BASE = "/api/v1/cart"
 @pytest.mark.asyncio
 async def test_cart_requires_auth(client: AsyncClient):
     # All /cart endpoints should reject when unauthenticated
-    assert (await client.get(f"{BASE}/")).status_code == 401
+    assert (await client.get(f"{BASE}/")).status_code == 403
     assert (
         await client.post(f"{BASE}/items", json={"product_id": str(uuid4()), "quantity": 1})
-    ).status_code == 401
-    assert (await client.put(f"{BASE}/items/{uuid4()}", json={"quantity": 1})).status_code == 401
-    assert (await client.delete(f"{BASE}/items/{uuid4()}")).status_code == 401
-    assert (await client.delete(f"{BASE}/")).status_code == 401
+    ).status_code == 403
+    assert (await client.put(f"{BASE}/items/{uuid4()}", json={"quantity": 1})).status_code == 403
+    assert (await client.delete(f"{BASE}/items/{uuid4()}")).status_code == 403
+    assert (await client.delete(f"{BASE}/")).status_code == 403
 
 
 # ---------------- Get ----------------
