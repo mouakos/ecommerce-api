@@ -78,7 +78,7 @@ async def get_review(
     return review
 
 
-@router.put("/reviews/{review_id}", response_model=ReviewRead)
+@router.patch("/reviews/{review_id}", response_model=ReviewRead)
 async def update_review(
     review_id: UUID,
     data: ReviewUpdate,

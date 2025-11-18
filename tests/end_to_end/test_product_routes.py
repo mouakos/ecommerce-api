@@ -197,7 +197,7 @@ async def test_update_product_success(auth_admin_client: AsyncClient, db_session
     created = ProductFactory()
     await db_session.flush()
     payload = {"name": "New", "price": 15.5}
-    r = await auth_admin_client.put(f"{BASE}/{created.id}", json=payload)
+    r = await auth_admin_client.patch(f"{BASE}/{created.id}", json=payload)
     assert r.status_code == 200
     body = r.json()
     assert body["name"] == "New"
@@ -206,7 +206,7 @@ async def test_update_product_success(auth_admin_client: AsyncClient, db_session
 
 @pytest.mark.asyncio
 async def test_update_product_not_found(auth_admin_client: AsyncClient):
-    r = await auth_admin_client.put(f"{BASE}/{uuid4()}", json={"name": "X"})
+    r = await auth_admin_client.patch(f"{BASE}/{uuid4()}", json={"name": "X"})
     assert r.status_code == 404
     assert r.json()["detail"] == "Product not found."
 
@@ -221,7 +221,7 @@ async def test_update_product_duplicate_name_same_category_conflict(
     await db_session.flush()
 
     # Try renaming B to A in same category -> violates (category_id, name) unique
-    r = await auth_admin_client.put(f"{BASE}/{b.id}", json={"name": "ProdA"})
+    r = await auth_admin_client.patch(f"{BASE}/{b.id}", json={"name": "ProdA"})
     assert r.status_code == 409
     assert r.json()["detail"] == "Product already exists."
 

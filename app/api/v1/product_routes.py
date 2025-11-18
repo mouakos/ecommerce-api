@@ -79,7 +79,7 @@ async def get_product(
     return await ProductService.get(product_id, db)
 
 
-@router.put("/{product_id}", response_model=ProductRead, dependencies=[role_checker])
+@router.patch("/{product_id}", response_model=ProductRead, dependencies=[role_checker])
 async def update_product(
     product_id: UUID, data: ProductUpdate, db: Annotated[AsyncSession, Depends(get_session)]
 ) -> ProductRead:

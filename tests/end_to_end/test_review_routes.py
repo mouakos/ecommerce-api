@@ -152,7 +152,7 @@ async def test_update_review_author_success(auth_client: AsyncClient, db_session
     await db_session.flush()
     created = await create_review(auth_client, str(product.id), 4, "Orig")
     review_id = created.json()["id"]
-    r_upd = await auth_client.put(
+    r_upd = await auth_client.patch(
         f"{REV_BASE}/reviews/{review_id}", json={"comment": "Edited", "rating": 5}
     )
     assert r_upd.status_code == 200
@@ -167,7 +167,7 @@ async def test_update_review_unauthorized_other_user(
     await db_session.flush()
     created = await create_review(auth_client, str(product.id), 4, "Mine")
     review_id = created.json()["id"]
-    r_other = await auth_client1.put(f"{REV_BASE}/reviews/{review_id}", json={"rating": 2})
+    r_other = await auth_client1.patch(f"{REV_BASE}/reviews/{review_id}", json={"rating": 2})
     assert r_other.status_code == 403
     assert r_other.json()["detail"] == "You do not have enough permissions to perform this action."
 
