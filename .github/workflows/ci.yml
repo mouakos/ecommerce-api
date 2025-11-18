@@ -30,13 +30,19 @@ jobs:
           --health-interval=5s
           --health-timeout=5s
           --health-retries=5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
 
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_test
       TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/ecommerce_test
       SECRET_KEY: dummy-ci-secret-key-change-me
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
       JWT_ALGORITHM: HS256
+      REDIS_URL: redis://localhost:6379/0
 
     steps:
       - name: 📥 Checkout repository
