@@ -87,7 +87,7 @@ async def test_create_product_duplicate_name_same_category_conflict(
 
     r2 = await create_product(auth_admin_client, name="Duplicated", category_id=str(category.id))
     assert r2.status_code == 409
-    assert r2.json()["detail"] == "Product with this name already exists in the category."
+    assert r2.json()["detail"] == "Product already exists."
 
 
 @pytest.mark.asyncio
@@ -132,7 +132,7 @@ async def test_list_products_paged_and_filtered(client: AsyncClient, db_session)
     category = CategoryFactory()
     other_category = CategoryFactory()
     ProductFactory(name="Phone", price=99.0, stock=5, description="smart phone", category=category)
-    ProductFactory(name="Laptop", price=899.0, stock=0, description="ultrabook", category=category)
+    ProductFactory(name="Laptop", price=899.0, stock=0, description="ultra-book", category=category)
     ProductFactory(name="Novel", price=15.0, stock=10, description="book", category=other_category)
     await db_session.flush()
 
@@ -161,7 +161,7 @@ async def test_list_products_paged_and_filtered(client: AsyncClient, db_session)
     names_q = [it["name"] for it in r_q.json()["items"]]
     assert (
         "Novel" in names_q or "Laptop" in names_q
-    )  # "book" in description of Novel, "ultrabook" in Laptop
+    )  # "book" in description of Novel, "ultra-book" in Laptop
 
     # Sort descending by price
     r_sort = await client.get(f"{BASE}/?sort=-price")
@@ -222,7 +222,8 @@ async def test_update_product_duplicate_name_same_category_conflict(
 
     # Try renaming B to A in same category -> violates (category_id, name) unique
     r = await auth_admin_client.put(f"{BASE}/{b.id}", json={"name": "ProdA"})
-    assert r.status_code == 409, r.text
+    assert r.status_code == 409
+    assert r.json()["detail"] == "Product already exists."
 
 
 # ------- Tests: DELETE -------

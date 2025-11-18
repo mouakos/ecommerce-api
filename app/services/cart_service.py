@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import CartItemNotFoundError, CartNotFoundError, InsufficientStockError
+from app.core.errors import CartItemNotFoundError, InsufficientStockError
 from app.models.cart import Cart, CartItem
 from app.schemas.cart import CartItemCreate
 from app.services.product_service import ProductService
@@ -131,7 +131,7 @@ class CartService:
 
         item = await db.get(CartItem, item_id)
         if not item or item.cart_id != cart.id:
-            raise CartNotFoundError()
+            raise CartItemNotFoundError()
 
         if quantity is None:
             return cart

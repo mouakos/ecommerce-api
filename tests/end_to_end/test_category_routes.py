@@ -39,7 +39,8 @@ async def test_create_category_duplicate_name_conflict(auth_admin_client: AsyncC
     r1 = await auth_admin_client.post(f"{BASE}/", json={"name": "UniqueCat"})
     r2 = await auth_admin_client.post(f"{BASE}/", json={"name": "UniqueCat"})
     assert r1.status_code == 201, r1.text
-    assert r2.status_code == 409, r2.text
+    assert r2.status_code == 409
+    assert r2.json()["detail"] == "Category already exists."
 
 
 # ---------- LIST ----------
@@ -191,7 +192,7 @@ async def test_update_category_duplicate_name_conflict(auth_admin_client: AsyncC
     # Try renaming Decoration -> Electronics
     r = await auth_admin_client.put(f"{BASE}/{b.id}", json={"name": "Electronics"})
     assert r.status_code == 409
-    assert r.json()["detail"] == "Category with this name already exists."
+    assert r.json()["detail"] == "Category already exists."
 
 
 # ---------- DELETE ----------

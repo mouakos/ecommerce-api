@@ -6,7 +6,6 @@ from fastapi.responses import JSONResponse
 from app.core.errors import (
     AccessTokenRequiredError,
     CartItemNotFoundError,
-    CartNotFoundError,
     CategoryAlreadyExistsError,
     CategoryNotFoundError,
     EcomError,
@@ -103,7 +102,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
-                "detail": "Invalid Email Or Password.",
+                "detail": "Invalid Email or Password.",
                 "error_code": "invalid_email_or_password",
             },
         )
@@ -126,15 +125,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         """Handle user not found errors."""
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "User Not found.", "error_code": "user_not_found"},
-        )
-
-    @app.exception_handler(CartNotFoundError)
-    async def handle_cart_not_found_error(_: Request, _exc: CartNotFoundError) -> JSONResponse:
-        """Handle cart not found errors."""
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Cart Not found.", "error_code": "cart_not_found"},
+            content={"detail": "User not found.", "error_code": "user_not_found"},
         )
 
     @app.exception_handler(ProductNotFoundError)
@@ -144,7 +135,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         """Handle product not found errors."""
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Product Not found.", "error_code": "product_not_found"},
+            content={"detail": "Product not found.", "error_code": "product_not_found"},
         )
 
     @app.exception_handler(ProductAlreadyExistsError)
@@ -167,7 +158,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         """Handle category not found errors."""
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Category Not found.", "error_code": "category_not_found"},
+            content={"detail": "Category not found.", "error_code": "category_not_found"},
         )
 
     @app.exception_handler(CategoryAlreadyExistsError)
@@ -188,7 +179,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         """Handle order not found errors."""
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Order Not found.", "error_code": "order_not_found"},
+            content={"detail": "Order not found.", "error_code": "order_not_found"},
         )
 
     @app.exception_handler(InsufficientStockError)
@@ -216,7 +207,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         """Handle cart item not found errors."""
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Cart item Not found.", "error_code": "cart_item_not_found"},
+            content={"detail": "Cart item not found.", "error_code": "cart_item_not_found"},
         )
 
     @app.exception_handler(ReviewNotFoundError)
@@ -224,7 +215,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         """Handle review not found errors."""
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
-            content={"detail": "Review Not found.", "error_code": "review_not_found"},
+            content={"detail": "Review not found.", "error_code": "review_not_found"},
         )
 
     @app.exception_handler(UserReviewProductAlreadyExistsError)
@@ -235,7 +226,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "User review for product already exists.",
+                "detail": "User has already reviewed this product.",
                 "error_code": "user_review_product_already_exists",
             },
         )

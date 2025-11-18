@@ -55,12 +55,6 @@ class UserNotFoundError(EcomError):
     pass
 
 
-class CartNotFoundError(EcomError):
-    """Cart Not found."""
-
-    pass
-
-
 class ProductNotFoundError(EcomError):
     """Product Not found."""
 
