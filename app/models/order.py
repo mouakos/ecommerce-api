@@ -7,7 +7,8 @@ from uuid import UUID
 from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship
 
-from app.models.common import TimestampMixin, UUIDMixin, utcnow
+from app.models.base import TimestampMixin, UUIDMixin
+from app.utils.time import utcnow
 
 if TYPE_CHECKING:
     from app.models.user import User

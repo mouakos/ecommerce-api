@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker
 from app.db.session import get_session
-from app.schemas.common import Page
+from app.schemas.base import Page
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.schemas.review import AverageReview
 from app.services.product_service import ProductService

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import TimestampMixin, UUIDMixin
+from app.schemas.base import TimestampMixin, UUIDMixin
 
 
 class ProductCreate(BaseModel):

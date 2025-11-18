@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, EmailStr, Field
 
-from app.schemas.common import TimestampMixin, UUIDMixin
+from app.schemas.base import TimestampMixin, UUIDMixin
 
 
 class UserCreate(BaseModel):

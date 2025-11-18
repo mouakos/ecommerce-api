@@ -11,7 +11,7 @@ from app.api.deps import RoleChecker, get_current_user
 from app.core.errors import NotFoundError
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.common import Page
+from app.schemas.base import Page
 from app.schemas.review import (
     ReviewAdminUpdate,
     ReviewCreate,

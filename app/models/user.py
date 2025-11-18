@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Column, DateTime, Field, Relationship
 
-from app.models.common import TimestampMixin, UUIDMixin, utcnow
+from app.models.base import TimestampMixin, UUIDMixin
+from app.utils.time import utcnow
 
 if TYPE_CHECKING:
     from app.models.cart import Cart
