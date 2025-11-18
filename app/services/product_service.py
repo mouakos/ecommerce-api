@@ -8,7 +8,7 @@ from uuid import UUID
 from sqlmodel import asc, desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ProductAlreadyExistsError, ProductNotFoundError
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.category_service import CategoryService
@@ -116,7 +116,7 @@ class ProductService:
             db, product.name, product.category_id
         )
         if existing_product:
-            raise ConflictError("Product with this name already exists in the category.")
+            raise ProductAlreadyExistsError()
 
         db_product = Product(**product.model_dump())
         db.add(db_product)
@@ -140,7 +140,7 @@ class ProductService:
         """
         product = await db.get(Product, product_id)
         if not product:
-            raise NotFoundError("Product not found.")
+            raise ProductNotFoundError()
         return product
 
     @staticmethod
@@ -160,7 +160,7 @@ class ProductService:
         """
         db_product = await db.get(Product, product_id)
         if not db_product:
-            raise NotFoundError("Product not found.")
+            raise ProductNotFoundError()
 
         product_category = db_product.category_id
 
@@ -174,7 +174,7 @@ class ProductService:
                 db, product.name, product_category
             )
             if existing_product and existing_product.id != db_product.id:
-                raise ConflictError("Product with this name already exists in the category.")
+                raise ProductAlreadyExistsError()
 
         for key, value in product.model_dump(exclude_unset=True).items():
             setattr(db_product, key, value)
@@ -193,7 +193,8 @@ class ProductService:
         """
         db_product = await db.get(Product, product_id)
         if not db_product:
-            raise NotFoundError("Product not found.")
+            raise ProductNotFoundError()
+
         await db.delete(db_product)
         await db.flush()
 

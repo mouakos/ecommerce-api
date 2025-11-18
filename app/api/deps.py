@@ -8,7 +8,13 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import UnauthorizedError
+from app.core.errors import (
+    AccessTokenRequiredError,
+    InsufficientPermissionError,
+    InvalidTokenError,
+    RefreshTokenRequiredError,
+    RevokedTokenError,
+)
 from app.core.security import decode_token
 from app.db.redis import is_token_in_blocklist
 from app.db.session import get_session
@@ -32,12 +38,12 @@ class TokenBearer(HTTPBearer, ABC):
         token_details = decode_token(token)
 
         if not self.token_valid(token):
-            raise UnauthorizedError("Invalid token.")
+            raise InvalidTokenError("Invalid token.")
 
         assert token_details is not None
 
         if await is_token_in_blocklist(token_details["jti"]):
-            raise UnauthorizedError("Token has been revoked.")
+            raise RevokedTokenError()
 
         self.verify_token_data(token_details)
 
@@ -61,7 +67,7 @@ class AccessTokenBearer(TokenBearer):
     def verify_token_data(self, token_details: dict[str, Any]) -> None:
         """Verify that the token is an access token."""
         if token_details and token_details["refresh"]:
-            raise UnauthorizedError("Access token required.")
+            raise AccessTokenRequiredError()
 
 
 class RefreshTokenBearer(TokenBearer):
@@ -70,7 +76,7 @@ class RefreshTokenBearer(TokenBearer):
     def verify_token_data(self, token_details: dict[str, Any]) -> None:
         """Verify that the token is a refresh token."""
         if token_details and not token_details["refresh"]:
-            raise UnauthorizedError("Refresh token required.")
+            raise RefreshTokenRequiredError()
 
 
 async def get_current_user(
@@ -91,7 +97,7 @@ async def get_current_user(
     """
     user = await db.get(User, UUID(token_details["sub"]))
     if not user:
-        raise UnauthorizedError("Invalid token.")
+        raise InvalidTokenError()
     return user
 
 
@@ -107,4 +113,4 @@ class RoleChecker:
         if current_user.role in self.allowed_roles:
             return True
 
-        raise UnauthorizedError("Insufficient permissions.")
+        raise InsufficientPermissionError()

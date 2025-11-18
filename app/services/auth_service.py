@@ -3,7 +3,10 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import BadRequestError, ConflictError
+from app.core.errors import (
+    InvalidCredentialsError,
+    UserAlreadyExistsError,
+)
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate
@@ -39,7 +42,7 @@ class AuthService:
         """
         existing_user = await AuthService.get_user_by_email(db, data.email)
         if existing_user:
-            raise ConflictError("Email already registered.")
+            raise UserAlreadyExistsError()
 
         user = User(email=data.email, hashed_password=get_password_hash(data.password))
 
@@ -65,5 +68,5 @@ class AuthService:
         """
         user = await AuthService.get_user_by_email(db, email)
         if not user or not verify_password(password, user.hashed_password):
-            raise BadRequestError("Invalid email or password.")
+            raise InvalidCredentialsError()
         return user

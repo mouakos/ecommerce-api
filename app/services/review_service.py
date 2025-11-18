@@ -6,7 +6,11 @@ from uuid import UUID
 from sqlmodel import asc, desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import ConflictError, NotFoundError, UnauthorizedError
+from app.core.errors import (
+    InsufficientPermissionError,
+    ReviewNotFoundError,
+    UserReviewProductAlreadyExistsError,
+)
 from app.models.review import Review
 from app.schemas.review import ReviewCreate, ReviewUpdate
 from app.services.product_service import ProductService
@@ -45,7 +49,7 @@ class ReviewService:
             select(Review).where(Review.product_id == product_id).where(Review.user_id == user_id)
         )
         if existing.first():
-            raise ConflictError(f"User {user_id} has already reviewed this product.")
+            raise UserReviewProductAlreadyExistsError()
 
         review = Review(product_id=product_id, user_id=user_id, **data.model_dump())
         db.add(review)
@@ -108,7 +112,7 @@ class ReviewService:
         """
         review = await db.get(Review, review_id)
         if not review:
-            raise NotFoundError("Review not found.")
+            raise ReviewNotFoundError()
         return review
 
     @staticmethod
@@ -133,9 +137,9 @@ class ReviewService:
         """
         review = await db.get(Review, review_id)
         if not review:
-            raise NotFoundError("Review not found.")
+            raise ReviewNotFoundError()
         if review.user_id != user_id and not review.user.role == "admin":
-            raise UnauthorizedError("Not allowed to update this review.")
+            raise InsufficientPermissionError()
 
         for key, value in data.model_dump(exclude_unset=True).items():
             setattr(review, key, value)
@@ -160,7 +164,7 @@ class ReviewService:
         """
         review = await db.get(Review, review_id)
         if not review:
-            raise NotFoundError("Review not found.")
+            raise ReviewNotFoundError()
         review.is_visible = is_visible
         await db.flush()
         await db.refresh(review)
@@ -181,9 +185,9 @@ class ReviewService:
         """
         review = await db.get(Review, review_id)
         if not review:
-            raise NotFoundError("Review not found.")
+            raise ReviewNotFoundError()
         if review.user_id != user_id and not review.user.role == "admin":
-            raise UnauthorizedError("Not allowed to delete this review.")
+            raise InsufficientPermissionError()
         await db.delete(review)
         await db.flush()
 

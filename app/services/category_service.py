@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import CategoryAlreadyExistsError, CategoryNotFoundError
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 
@@ -64,7 +64,7 @@ class CategoryService:
         """
         category = await CategoryService.get_by_name(data.name, db)
         if category:
-            raise ConflictError("Category with this name already exists.")
+            raise CategoryAlreadyExistsError()
 
         new_category = Category(**data.model_dump())
         db.add(new_category)
@@ -88,7 +88,7 @@ class CategoryService:
         """
         category = await db.get(Category, category_id)
         if not category:
-            raise NotFoundError("Category not found.")
+            raise CategoryNotFoundError()
         return category
 
     @staticmethod
@@ -109,12 +109,12 @@ class CategoryService:
         """
         category = await db.get(Category, category_id)
         if not category:
-            raise NotFoundError("Category not found.")
+            raise CategoryNotFoundError()
 
         if data.name is not None:
             existing_category = await CategoryService.get_by_name(data.name, db)
             if existing_category and existing_category.id != category.id:
-                raise ConflictError("Category with this name already exists.")
+                raise CategoryAlreadyExistsError()
 
         for k, v in data.model_dump(exclude_unset=True).items():
             setattr(category, k, v)
@@ -139,7 +139,7 @@ class CategoryService:
         """
         category = await db.get(Category, category_id)
         if category is None:
-            raise NotFoundError("Category not found.")
+            raise CategoryNotFoundError()
         await db.delete(category)
         await db.flush()
 

@@ -5,7 +5,11 @@ from uuid import UUID
 from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import BadRequestError, ConflictError, NotFoundError
+from app.core.errors import (
+    EmptyCartError,
+    InsufficientStockError,
+    OrderNotFoundError,
+)
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.services.cart_service import CartService
@@ -37,7 +41,7 @@ class OrderService:
         cart = await CartService.get_user_cart(user_id, db)
 
         if not cart or not cart.items:
-            raise BadRequestError("Cart is empty.")
+            raise EmptyCartError()
 
         # 2) Lock all product rows we'll touch
         product_ids = [it.product_id for it in cart.items]
@@ -54,7 +58,7 @@ class OrderService:
         for it in cart.items:
             p = products_by_id.get(it.product_id)
             if not p or it.quantity > p.stock:
-                raise ConflictError("Not enough stock.")
+                raise InsufficientStockError()
 
         # 4) Create order + items, decrement stock (single transaction)
         order = Order(
@@ -122,5 +126,5 @@ class OrderService:
         stmt = select(Order).where(Order.id == order_id).where(Order.user_id == user_id)
         order = (await db.exec(stmt)).first()
         if not order:
-            raise NotFoundError(f"Order {order_id} not found for user {user_id}")
+            raise OrderNotFoundError()
         return order
