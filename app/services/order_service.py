@@ -31,8 +31,8 @@ class OrderService:
             db (AsyncSession): The database session.
 
         Raises:
-            ConflictError: If there is a stock conflict.
-            NotFoundError: If the cart is not found.
+            EmptyCartError: If the user's cart is empty.
+            InsufficientStockError: If any product lacks sufficient stock.
 
         Returns:
             Order: The created order.
@@ -110,7 +110,7 @@ class OrderService:
 
     @staticmethod
     async def get_user_order(user_id: UUID, order_id: UUID, db: AsyncSession) -> Order:
-        """Get a specific order for a user, loading items.
+        """Get a specific order for a user.
 
         Args:
             user_id (UUID): The ID of the user.
@@ -118,7 +118,7 @@ class OrderService:
             db (AsyncSession): The database session.
 
         Raises:
-            NotFoundError: If the order is not found.
+            OrderNotFoundError: If the order does not exist for the user.
 
         Returns:
             Order: The order.

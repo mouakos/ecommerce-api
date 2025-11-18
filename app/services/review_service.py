@@ -29,17 +29,17 @@ class ReviewService:
         """Create a new review for a product.
 
         Args:
-            product_id (UUID): Product ID
-            user_id (UUID): User ID
-            data (ReviewCreate): Data for the new review
-            db (AsyncSession): Database session
+            product_id (UUID): Product ID.
+            user_id (UUID): User ID.
+            data (ReviewCreate): Data for the new review.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the product does not exist
-            ConflictError: If the user has already reviewed the product
+            ProductNotFoundError: If the product does not exist.
+            UserReviewProductAlreadyExistsError: If the user has already reviewed the product.
 
         Returns:
-            Review: The created review
+            Review: The created review.
         """
         # Ensure product exists
         _ = await ProductService.get(product_id, db)
@@ -76,7 +76,7 @@ class ReviewService:
             offset (int): Number of reviews to skip.
             visible_only (bool): Whether to return only visible reviews.
             order_by (OrderBy): Field to order by.
-            order_dir (OrderDir): Direction to order (ascending or descending).
+            order_dir (OrderDir): Direction to order.
 
         Returns:
             tuple[list[Review], int]: List of reviews and total count.
@@ -105,7 +105,7 @@ class ReviewService:
             db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the review does not exist.
+            ReviewNotFoundError: If the review does not exist.
 
         Returns:
             Review: The requested review.
@@ -128,12 +128,14 @@ class ReviewService:
             review_id (UUID): Review ID.
             user_id (UUID): ID of the user attempting the update.
             data (ReviewUpdate): Data to update.
-            is_admin (bool): Whether the user is an admin.
             db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the review does not exist.
-            UnauthorizedError: If the user is not allowed to update the review.
+            ReviewNotFoundError: If the review does not exist.
+            InsufficientPermissionError: If the user is not allowed to update the review.
+
+        Returns:
+            Review: The updated review.
         """
         review = await db.get(Review, review_id)
         if not review:
@@ -157,7 +159,7 @@ class ReviewService:
             db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the review does not exist.
+            ReviewNotFoundError: If the review does not exist.
 
         Returns:
             Review: The updated review.
@@ -180,8 +182,8 @@ class ReviewService:
             db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the review does not exist.
-            UnauthorizedError: If the user is not allowed to delete the review.
+            ReviewNotFoundError: If the review does not exist.
+            InsufficientPermissionError: If the user is not allowed to delete the review.
         """
         review = await db.get(Review, review_id)
         if not review:
@@ -203,7 +205,7 @@ class ReviewService:
             tuple[float | None, int]: Average rating and count of visible reviews.
         """
         stmt = select(func.avg(Review.rating), func.count()).where(
-            (Review.product_id == product_id) & (Review.is_visible.is_(True))  # type: ignore  [attr-defined]
+            (Review.product_id == product_id) & (Review.is_visible.is_(True))  # type: ignore[attr-defined]
         )
         avg_val, count_val = (await db.exec(stmt)).one()
         return (float(avg_val) if avg_val is not None else None, int(count_val))

@@ -1,5 +1,4 @@
 # mypy: disable-error-code=arg-type
-
 """Service layer for product-related business logic in the ecommerce API."""
 
 from typing import Literal
@@ -8,7 +7,10 @@ from uuid import UUID
 from sqlmodel import asc, desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.errors import ProductAlreadyExistsError, ProductNotFoundError
+from app.core.errors import (
+    ProductAlreadyExistsError,
+    ProductNotFoundError,
+)
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.services.category_service import CategoryService
@@ -33,27 +35,26 @@ class ProductService:
         order_by: OrderBy = "name",
         order_dir: OrderDir = "asc",
     ) -> tuple[list[Product], int]:
-        """List all products.
+        """List products with filtering and pagination.
 
         Args:
-            db (AsyncSession): The database session.
-            limit (int): The maximum number of products to return.
-            offset (int): The number of products to skip before starting to collect the result set.
-            search (str | None): A search term to filter products by name or description.
-            category_id (UUID | None): The ID of the category to filter products by.
-            price_min (float | None): The minimum price to filter products by.
-            price_max (float | None): The maximum price to filter products by.
-            in_stock (bool | None): Whether to filter products by stock availability.
-            order_by (OrderBy): The field to order the results by.
-            order_dir (OrderDir): The direction to order the results (ascending or descending).
+            db (AsyncSession): Database session.
+            limit (int): Page size.
+            offset (int): Offset.
+            search (str | None): Text search.
+            category_id (UUID | None): Category filter.
+            price_min (float | None): Min price.
+            price_max (float | None): Max price.
+            in_stock (bool | None): Stock filter.
+            order_by (OrderBy): Sort field.
+            order_dir (OrderDir): Sort direction.
 
         Returns:
-            list[Product]: A list of all products.
+            tuple[list[Product], int]: Items and total count.
         """
         stmt = select(Product)
         count_stmt = select(func.count()).select_from(Product)
 
-        # Filters
         if search:
             like = f"%{search.lower()}%"
             cond = func.lower(Product.name).like(like) | func.lower(Product.description).like(like)
@@ -79,7 +80,6 @@ class ProductService:
             stmt = stmt.where(Product.stock == 0)
             count_stmt = count_stmt.where(Product.stock == 0)
 
-        # Sorting
         order_col = {
             "name": Product.name,
             "price": Product.price,
@@ -87,10 +87,7 @@ class ProductService:
         }[order_by]
         order_col = desc(order_col) if order_dir == "desc" else asc(order_col)
 
-        # Total first
         total = int((await db.exec(count_stmt)).first())
-
-        # Page
         res = await db.exec(stmt.order_by(order_col).limit(limit).offset(offset))
         items = list(res.all())
         return items, total
@@ -100,16 +97,16 @@ class ProductService:
         """Create a new product.
 
         Args:
-            product (ProductCreate): The product data to create.
-            db (AsyncSession): The database session.
+            product (ProductCreate): Product data.
+            db (AsyncSession): Database session.
 
         Raises:
-            ConflictError: If a product with the same name and category already exists.
+            CategoryNotFoundError: If the category does not exist.
+            ProductAlreadyExistsError: If a product with same name in category exists.
 
         Returns:
-            Product: The created product.
+            Product: Created product.
         """
-        # Ensure the category exists
         _ = await CategoryService.get(product.category_id, db)
 
         existing_product = await ProductService.get_by_name_and_category(
@@ -129,14 +126,14 @@ class ProductService:
         """Get a product by its ID.
 
         Args:
-            product_id (UUID): The ID of the product to retrieve.
-            db (AsyncSession): The database session.
+            product_id (UUID): Product ID.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the product is not found.
+            ProductNotFoundError: If the product does not exist.
 
         Returns:
-            Product: The retrieved product.
+            Product: Retrieved product.
         """
         product = await db.get(Product, product_id)
         if not product:
@@ -148,15 +145,17 @@ class ProductService:
         """Update an existing product.
 
         Args:
-            product_id (UUID): The ID of the product to update.
-            product (ProductUpdate): The updated product data.
-            db (AsyncSession): The database session.
+            product_id (UUID): Product ID.
+            product (ProductUpdate): Update data.
+            db (AsyncSession): Database session.
 
         Raises:
-            NotFoundError: If the product is not found.
+            ProductNotFoundError: If the product does not exist.
+            CategoryNotFoundError: If the new category does not exist.
+            ProductAlreadyExistsError: If name/category combination duplicates another product.
 
         Returns:
-            Product: The updated product.
+            Product: Updated product.
         """
         db_product = await db.get(Product, product_id)
         if not db_product:
@@ -164,7 +163,6 @@ class ProductService:
 
         product_category = db_product.category_id
 
-        # Ensure the category exists
         if product.category_id:
             _ = await CategoryService.get(product.category_id, db)
             product_category = product.category_id
@@ -188,8 +186,11 @@ class ProductService:
         """Delete a product by its ID.
 
         Args:
-            product_id (UUID): The ID of the product to delete.
-            db (AsyncSession): The database session.
+            product_id (UUID): Product ID.
+            db (AsyncSession): Database session.
+
+        Raises:
+            ProductNotFoundError: If the product does not exist.
         """
         db_product = await db.get(Product, product_id)
         if not db_product:
@@ -205,12 +206,12 @@ class ProductService:
         """Get a product by name and category.
 
         Args:
-            db (AsyncSession): The database session.
-            product_name (str): The name of the product.
-            category_id (UUID): The ID of the category.
+            db (AsyncSession): Database session.
+            product_name (str): Product name.
+            category_id (UUID): Category ID.
 
         Returns:
-            Product | None: The product if found, otherwise None.
+            Product | None: Matching product or None.
         """
         stmt = select(Product).where(
             (Product.name == product_name) & (Product.category_id == category_id)
