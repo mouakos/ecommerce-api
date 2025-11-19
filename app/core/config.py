@@ -43,27 +43,27 @@ class Settings(BaseSettings):
     )
     # email
     mail_server: str = Field(
-        ...,
+        default="",
         description="SMTP host for email",
         alias="MAIL_SERVER",
     )
     mail_port: int = Field(
-        ...,
+        default=0,
         description="SMTP port for email",
         alias="MAIL_PORT",
     )
     mail_username: str = Field(
-        ...,
+        default="",
         description="Email username",
         alias="MAIL_USERNAME",
     )
     mail_password: str = Field(
-        ...,
+        default="",
         description="Email password",
         alias="MAIL_PASSWORD",
     )
     mail_from: str = Field(
-        ...,
+        default="",
         description="Email from address",
         alias="MAIL_FROM",
     )
@@ -78,7 +78,7 @@ class Settings(BaseSettings):
         alias="SUPPRESS_SEND",
     )
     domain: str = Field(
-        ...,
+        default="localhost:8000",
         description="Domain name for the application",
         alias="DOMAIN",
     )
