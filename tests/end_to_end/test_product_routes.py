@@ -87,7 +87,7 @@ async def test_create_product_duplicate_name_same_category_conflict(
 
     r2 = await create_product(auth_admin_client, name="Duplicated", category_id=str(category.id))
     assert r2.status_code == 409
-    assert r2.json()["detail"] == "Product already exists."
+    assert r2.json()["detail"] == "Product with this name already exists under this category."
 
 
 @pytest.mark.asyncio
@@ -223,7 +223,7 @@ async def test_update_product_duplicate_name_same_category_conflict(
     # Try renaming B to A in same category -> violates (category_id, name) unique
     r = await auth_admin_client.patch(f"{BASE}/{b.id}", json={"name": "ProdA"})
     assert r.status_code == 409
-    assert r.json()["detail"] == "Product already exists."
+    assert r.json()["detail"] == "Product with this name already exists under this category."
 
 
 # ------- Tests: DELETE -------

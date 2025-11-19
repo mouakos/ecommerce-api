@@ -1,15 +1,18 @@
 """Security utilities for handling passwords and JWT tokens."""
 
+import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from itsdangerous import URLSafeTimedSerializer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from app.core.config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+serializer = URLSafeTimedSerializer(secret_key=settings.secret_key, salt="email-configuration")
 
 
 def get_password_hash(password: str) -> str:
@@ -64,5 +67,20 @@ def decode_token(token: str) -> dict[str, Any] | None:
     """
     try:
         return jwt.decode(token, settings.secret_key, [settings.jwt_algorithm])  # type: ignore [no-any-return]
-    except JWTError:
+    except JWTError as e:
+        logging.error(str(e))
+        return None
+
+
+def create_url_safe_token(user_email: str) -> str:
+    """Create a URL-safe token for email verification or password reset."""
+    return str(serializer.dumps(user_email))
+
+
+def decode_url_safe_token(private_key: str, max_age: int = 1800) -> str | None:
+    """Decode a URL-safe token."""
+    try:
+        return str(serializer.loads(private_key, max_age=max_age))
+    except Exception as e:
+        logging.error(str(e))
         return None

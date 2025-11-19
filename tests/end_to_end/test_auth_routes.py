@@ -1,7 +1,14 @@
-"""End to end tests for authentication-related API endpoints."""
+"""End to end tests for authentication-related API endpoints.
+
+Updated to reflect email verification requirement: users must verify before
+successful login. Tests now perform verification where needed and loosen
+registration assertions to match new response payload.
+"""
 
 import pytest
 from httpx import AsyncClient
+
+from app.core.security import create_url_safe_token
 
 BASE = "/api/v1/auth"
 
@@ -13,6 +20,11 @@ async def register(client: AsyncClient, email: str, password: str):
     return await client.post(f"{BASE}/register", json={"email": email, "password": password})
 
 
+async def verify(client: AsyncClient, email: str):
+    token = create_url_safe_token(email)
+    return await client.post(f"{BASE}/verify/{token}")
+
+
 async def login_json(client: AsyncClient, email: str, password: str):
     """Login using JSON body matching UserLogin schema."""
     return await client.post(
@@ -22,6 +34,8 @@ async def login_json(client: AsyncClient, email: str, password: str):
 
 
 async def token_for(client: AsyncClient, email: str, password: str) -> str:
+    # Ensure verified prior to login
+    await verify(client, email)
     r = await login_json(client, email, password)
     assert r.status_code == 200, r.text
     return r.json()["access_token"]
@@ -35,7 +49,7 @@ async def test_register_success(client: AsyncClient):
     r1 = await register(client, "a@example.com", "secret")
     assert r1.status_code == 201, r1.text
     body = r1.json()
-    assert "id" in body and body["email"] == "a@example.com"
+    assert "message" in body and "verify" in body["message"].lower()
 
 
 @pytest.mark.asyncio
@@ -43,7 +57,7 @@ async def test_register_duplicate_email(client: AsyncClient):
     _ = await register(client, "a@example.com", "secret")
     r2 = await register(client, "a@example.com", "secret")
     assert r2.status_code == 409
-    assert r2.json()["detail"] == "User with email already exists."
+    assert r2.json()["detail"] == "User with this email already exists."
 
 
 @pytest.mark.asyncio
@@ -67,6 +81,7 @@ async def test_register_validation_error(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_login_success_and_me(client: AsyncClient):
     await register(client, "c@example.com", "secret")
+    await verify(client, "c@example.com")
     token_resp = await login_json(client, "c@example.com", "secret")
     assert token_resp.status_code == 200, token_resp.text
     token = token_resp.json()["access_token"]
@@ -84,6 +99,17 @@ async def test_login_wrong_password(client: AsyncClient):
     r = await login_json(client, "d@example.com", "bad-password")
     assert r.status_code == 400
     assert r.json()["detail"] == "Invalid Email or Password."
+
+
+@pytest.mark.asyncio
+async def test_login_unverified_user_gets_account_not_verified(client: AsyncClient):
+    await register(client, "unverified@example.com", "secret")
+    r = await login_json(client, "unverified@example.com", "secret")
+    assert r.status_code == 403
+    body = r.json()
+    assert body["detail"] == "User account is not verified."
+    assert body["error_code"] == "account_not_verified"
+    assert "verify" in body["solution"].lower()
 
 
 @pytest.mark.asyncio
@@ -115,8 +141,11 @@ async def test_me_with_invalid_token(client: AsyncClient):
 async def test_me_with_tampered_token(client: AsyncClient):
     await register(client, "e@example.com", "secret")
     token = await token_for(client, "e@example.com", "secret")
-    # Tamper the token slightly
-    bad = token[:-1] + ("a" if token[-1] != "a" else "b")
+    # Tamper the token by altering the signature segment entirely to force failure
+    parts = token.split(".")
+    assert len(parts) == 3
+    parts[-1] = "xxxxinvalidsignature"  # replace signature with garbage
+    bad = ".".join(parts)
     r = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {bad}"})
     assert r.status_code == 401
     assert r.json()["detail"] == "Token is invalid or expired."
@@ -125,6 +154,7 @@ async def test_me_with_tampered_token(client: AsyncClient):
 @pytest.mark.asyncio
 async def test_logout_revokes_token(client: AsyncClient):
     await register(client, "logout@example.com", "secret")
+    await verify(client, "logout@example.com")
     login_resp = await login_json(client, "logout@example.com", "secret")
     assert login_resp.status_code == 200
     token = login_resp.json()["access_token"]
@@ -146,6 +176,7 @@ async def test_logout_revokes_token(client: AsyncClient):
 async def test_refresh_token_endpoint_requires_refresh_token(client: AsyncClient):
     """Using an access token on /refresh-token should raise RefreshTokenRequiredError (400)."""
     await register(client, "refresh-mismatch@example.com", "secret")
+    await verify(client, "refresh-mismatch@example.com")
     login_resp = await login_json(client, "refresh-mismatch@example.com", "secret")
     assert login_resp.status_code == 200
     access = login_resp.json()["access_token"]
@@ -161,6 +192,7 @@ async def test_refresh_token_endpoint_requires_refresh_token(client: AsyncClient
 async def test_logout_requires_access_token(client: AsyncClient):
     """Using a refresh token on /logout should raise AccessTokenRequiredError (400)."""
     await register(client, "access-mismatch@example.com", "secret")
+    await verify(client, "access-mismatch@example.com")
     login_resp = await login_json(client, "access-mismatch@example.com", "secret")
     assert login_resp.status_code == 200
     refresh = login_resp.json()["refresh_token"]

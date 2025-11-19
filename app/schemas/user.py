@@ -23,6 +23,8 @@ class UserRead(UUIDMixin, TimestampMixin):
 
     email: str
     is_active: bool
+    is_verified: bool
+    role: str
 
 
 class Token(BaseModel):
@@ -31,3 +33,9 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
+
+
+class EmailSchema(BaseModel):
+    """Schema for email operations."""
+
+    address: EmailStr

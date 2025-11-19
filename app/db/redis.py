@@ -27,7 +27,7 @@ async def is_token_in_blocklist(jti: str) -> bool:
     """
     redis = get_redis()
     is_revoked = await redis.get(jti)
-    await redis.close()
+    await redis.aclose()
     return is_revoked is not None
 
 
@@ -39,4 +39,4 @@ async def add_token_to_blocklist(jti: str) -> None:
     """
     redis = get_redis()
     await redis.set(jti, value="", ex=JTI_EXPIRY)
-    await redis.close()
+    await redis.aclose()

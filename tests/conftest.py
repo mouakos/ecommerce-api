@@ -97,7 +97,12 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
 @pytest.fixture
 async def auth_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Authenticated HTTP client for tests using JSON login payload."""
-    user = User(role="user", email="user@example.com", hashed_password=get_password_hash("user123"))
+    user = User(
+        role="user",
+        email="user@example.com",
+        hashed_password=get_password_hash("user123"),
+        is_verified=True,
+    )
     db_session.add(user)
     await db_session.flush()
     transport = ASGITransport(app=app)
@@ -113,7 +118,12 @@ async def auth_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, N
 @pytest.fixture
 async def auth_client1(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Second authenticated HTTP client (JSON login)."""
-    user = User(role="user", email="user1@example.com", hashed_password=get_password_hash("user12"))
+    user = User(
+        role="user",
+        email="user1@example.com",
+        hashed_password=get_password_hash("user12"),
+        is_verified=True,
+    )
     db_session.add(user)
     await db_session.flush()
     transport = ASGITransport(app=app)
@@ -130,7 +140,10 @@ async def auth_client1(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 async def auth_admin_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Authenticated admin HTTP client for tests (JSON login)."""
     admin_user = User(
-        role="admin", email="admin@example.com", hashed_password=get_password_hash("admin1")
+        role="admin",
+        email="admin@example.com",
+        hashed_password=get_password_hash("admin1"),
+        is_verified=True,
     )
     db_session.add(admin_user)
     await db_session.flush()

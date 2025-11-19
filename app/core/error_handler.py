@@ -5,14 +5,17 @@ from fastapi.responses import JSONResponse
 
 from app.core.errors import (
     AccessTokenRequiredError,
+    AccountNotVerifiedError,
     CartItemNotFoundError,
     CategoryAlreadyExistsError,
     CategoryNotFoundError,
     EcomError,
+    EmailSendingError,
     EmptyCartError,
     InsufficientPermissionError,
     InsufficientStockError,
     InvalidCredentialsError,
+    InvalidEmailTokenError,
     InvalidTokenError,
     OrderNotFoundError,
     ProductAlreadyExistsError,
@@ -89,7 +92,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "User with email already exists.",
+                "detail": "User with this email already exists.",
                 "error_code": "user_already_exists",
             },
         )
@@ -146,7 +149,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "Product already exists.",
+                "detail": "Product with this name already exists under this category.",
                 "error_code": "product_already_exists",
             },
         )
@@ -169,7 +172,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "Category already exists.",
+                "detail": "Category with this name already exists.",
                 "error_code": "category_already_exists",
             },
         )
@@ -228,6 +231,45 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "detail": "User has already reviewed this product.",
                 "error_code": "user_review_product_already_exists",
+            },
+        )
+
+    @app.exception_handler(AccountNotVerifiedError)
+    async def handle_account_not_verified_error(
+        _: Request, _exc: AccountNotVerifiedError
+    ) -> JSONResponse:
+        """Handle account not verified errors."""
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "detail": "User account is not verified.",
+                "error_code": "account_not_verified",
+                "solution": "Please verify your email to activate your account.",
+            },
+        )
+
+    @app.exception_handler(EmailSendingError)
+    async def handle_email_sending_error(_: Request, _exc: EmailSendingError) -> JSONResponse:
+        """Handle email sending errors."""
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": "Error occurred while sending email.",
+                "error_code": "email_sending_error",
+            },
+        )
+
+    @app.exception_handler(InvalidEmailTokenError)
+    async def handle_invalid_email_token_error(
+        _: Request, _exc: InvalidEmailTokenError
+    ) -> JSONResponse:
+        """Handle invalid email token errors."""
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "detail": "The email verification token is invalid or has expired.",
+                "error_code": "invalid_email_token",
+                "solution": "Please request a new verification email.",
             },
         )
 
