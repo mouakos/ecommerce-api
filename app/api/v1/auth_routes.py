@@ -40,6 +40,7 @@ async def create_new_user(
 ) -> JSONResponse:
     """Register a new user and return the created user."""
     user = await AuthService.create_user(db, data)
+
     token = create_url_safe_token(user.email)
     verification_link = f"http://{settings.domain}/api/v1/auth/verify/{token}"
 
@@ -62,12 +63,14 @@ async def login(
     user = await AuthService.authenticate_user(db, data.email, data.password)
     if not user.is_verified:
         raise AccountNotVerifiedError()
+
     access_token = create_access_token(subject=str(user.id))
     refresh_token = create_access_token(
         subject=str(user.id),
         expiry=timedelta(days=settings.refresh_token_expire_days),
         refresh=True,
     )
+
     return Token(access_token=access_token, refresh_token=refresh_token)
 
 
@@ -130,9 +133,9 @@ async def resend_verification_email(
             content={"message": "User account is already verified."},
             status_code=status.HTTP_200_OK,
         )
+
     token = create_url_safe_token(user.email)
     verification_link = f"http://{settings.domain}/api/v1/auth/verify/{token}"
-
     await EmailService.send_verification_email([email_data.email], verification_link)
 
     return JSONResponse(
@@ -153,7 +156,6 @@ async def request_password_reset(
 
     token = create_url_safe_token(user.email)
     reset_link = f"http://{settings.domain}/api/v1/auth/reset-password/{token}"
-
     await EmailService.send_password_reset_email([email_data.email], reset_link)
 
     return JSONResponse(

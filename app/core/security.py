@@ -77,9 +77,11 @@ def create_url_safe_token(user_email: str) -> str:
     return str(serializer.dumps(user_email))
 
 
-def decode_url_safe_token(private_key: str, max_age: int = 1800) -> str | None:
+def decode_url_safe_token(private_key: str, max_age: int | None = None) -> str | None:
     """Decode a URL-safe token."""
     try:
+        if max_age is None:
+            max_age = settings.email_token_expire_hours * 3600  # seconds
         return str(serializer.loads(private_key, max_age=max_age))
     except Exception as e:
         logging.error(str(e))

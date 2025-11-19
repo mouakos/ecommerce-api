@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(
         default="HS256", description="JWT signing algorithm", alias="JWT_ALGORITHM"
     )
+    email_token_expire_hours: int = Field(
+        default=24,
+        description="Email token expiration time in hours",
+        alias="EMAIL_TOKEN_EXPIRE_HOURS",
+    )
     # email
     mail_server: str = Field(
         default="",
