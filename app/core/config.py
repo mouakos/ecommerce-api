@@ -78,11 +78,6 @@ class Settings(BaseSettings):
         description="Email from name",
         alias="MAIL_FROM_NAME",
     )
-    suppress_send: bool = Field(
-        default=False,
-        description="Suppress sending emails (for testing)",
-        alias="SUPPRESS_SEND",
-    )
     domain: str = Field(
         default="localhost:8000",
         description="Domain name for the application",

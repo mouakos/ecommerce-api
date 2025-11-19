@@ -22,7 +22,6 @@ mail_config = ConnectionConfig(
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=True,
     # TEMPLATE_FOLDER=Path(BASE_DIR, "templates"),
-    SUPPRESS_SEND=int(settings.suppress_send),
 )
 
 
