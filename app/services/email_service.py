@@ -21,7 +21,7 @@ mail_config = ConnectionConfig(
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=True,
-    SUPPRESS_SEND=int(settings.suppress_send),
+    SUPPRESS_SEND=1 if settings.suppress_send else 0,
     # TEMPLATE_FOLDER=Path(BASE_DIR, "templates"),
 )
 

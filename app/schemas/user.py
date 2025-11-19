@@ -44,13 +44,6 @@ class UserRoleUpdate(BaseModel):
     role: str
 
 
-class UsersListResponse(BaseModel):
-    """Schema for returning a paginated list of users."""
-
-    total: int
-    items: list[UserRead]
-
-
 class Token(BaseModel):
     """Schema for authentication token response."""
 

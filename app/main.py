@@ -43,10 +43,10 @@ register_exception_handlers(app)
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(user_router)
 app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(category_router)
 app.include_router(product_router)
 app.include_router(review_router)
 app.include_router(meta_router)
-app.include_router(user_router)

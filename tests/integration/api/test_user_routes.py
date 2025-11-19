@@ -57,6 +57,75 @@ async def test_login_success_and_me(client: AsyncClient):
     assert "id" in me
 
 
+# ---------------- /users/me token edge cases ----------------
+
+
+@pytest.mark.asyncio
+async def test_me_unauthorized_no_token(client: AsyncClient):
+    r = await client.get(BASE + "/me")
+    # HTTPBearer returns 403 when Authorization header is missing
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_me_with_invalid_token(client: AsyncClient):
+    r = await client.get(BASE + "/me", headers={"Authorization": "Bearer not-a-real-token"})
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Token is invalid or expired."
+
+
+@pytest.mark.asyncio
+async def test_me_with_tampered_token(client: AsyncClient):
+    # Register & verify
+    r_reg = await client.post(
+        "/api/v1/auth/register", json={"email": "e@example.com", "password": "secret"}
+    )
+    assert r_reg.status_code == 201
+    from app.core.security import create_url_safe_token
+
+    verify_token = create_url_safe_token("e@example.com")
+    r_ver = await client.get(f"/api/v1/auth/verify/{verify_token}")
+    assert r_ver.status_code == 200
+    # Login
+    r_login = await client.post(
+        "/api/v1/auth/login", json={"email": "e@example.com", "password": "secret"}
+    )
+    assert r_login.status_code == 200
+    access = r_login.json()["access_token"]
+    # Tamper signature
+    parts = access.split(".")
+    parts[-1] = "xxxxinvalidsignature"
+    bad = ".".join(parts)
+    r = await client.get(BASE + "/me", headers={"Authorization": f"Bearer {bad}"})
+    assert r.status_code == 401
+    assert r.json()["detail"] == "Token is invalid or expired."
+
+
+@pytest.mark.asyncio
+async def test_logout_revokes_token(client: AsyncClient):
+    r_reg = await client.post(
+        "/api/v1/auth/register", json={"email": "logout@example.com", "password": "secret"}
+    )
+    assert r_reg.status_code == 201
+    from app.core.security import create_url_safe_token
+
+    verify_token = create_url_safe_token("logout@example.com")
+    r_ver = await client.get(f"/api/v1/auth/verify/{verify_token}")
+    assert r_ver.status_code == 200
+    r_login = await client.post(
+        "/api/v1/auth/login", json={"email": "logout@example.com", "password": "secret"}
+    )
+    assert r_login.status_code == 200
+    access = r_login.json()["access_token"]
+    r_logout = await client.post(
+        "/api/v1/auth/logout", headers={"Authorization": f"Bearer {access}"}
+    )
+    assert r_logout.status_code == 200
+    r_me = await client.get(BASE + "/me", headers={"Authorization": f"Bearer {access}"})
+    assert r_me.status_code == 401
+    assert r_me.json()["detail"] == "Token is invalid or has been revoked."
+
+
 @pytest.mark.asyncio
 async def test_list_users_non_admin_forbidden(auth_client: AsyncClient):
     r = await auth_client.get(BASE + "/")

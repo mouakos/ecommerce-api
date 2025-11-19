@@ -11,30 +11,30 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.deps import RoleChecker, get_current_user
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.user import UserRead, UserRoleUpdate, UsersListResponse, UserUpdate
+from app.schemas.base import Page
+from app.schemas.user import UserRead, UserRoleUpdate, UserUpdate
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/api/v1/users", tags=["Users"])
 role_checker = Depends(RoleChecker(["admin"]))
 
 
-@router.get("/", response_model=UsersListResponse, dependencies=[role_checker])
+@router.get("/", response_model=Page[UserRead], dependencies=[role_checker])
 async def list_users(
     db: Annotated[AsyncSession, Depends(get_session)],
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     search: str | None = Query(None, min_length=1),
-) -> UsersListResponse:
+) -> Page[UserRead]:
     """List users (admin only) with optional email search and pagination."""
     users, total = await UserService.list(db, limit=limit, offset=offset, search=search)
-    serialized = [UserRead.model_validate(u, from_attributes=True) for u in users]
-    return UsersListResponse(total=total, items=serialized)
+    return Page[UserRead](items=users, total=total, limit=limit, offset=offset)
 
 
 @router.get("/me", response_model=UserRead)
 async def me(current_user: Annotated[User, Depends(get_current_user)]) -> UserRead:
     """Get the current authenticated user."""
-    return UserRead.model_validate(current_user, from_attributes=True)
+    return current_user
 
 
 @router.get("/{user_id}", response_model=UserRead, dependencies=[role_checker])
@@ -43,8 +43,7 @@ async def get_user(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserRead:
     """Get a user by id (admin only)."""
-    user = await UserService.get(db, user_id)
-    return UserRead.model_validate(user, from_attributes=True)
+    return await UserService.get(db, user_id)
 
 
 @router.patch("/me", response_model=UserRead)
@@ -54,8 +53,7 @@ async def update_me(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserRead:
     """Update current user's profile."""
-    updated = await UserService.update_profile(db, current_user.id, data)
-    return UserRead.model_validate(updated, from_attributes=True)
+    return await UserService.update_profile(db, current_user.id, data)
 
 
 @router.post("/{user_id}/deactivate", status_code=status.HTTP_200_OK, dependencies=[role_checker])
