@@ -115,14 +115,14 @@ class UserReviewProductAlreadyExistsError(EcomError):
     pass
 
 
-class UserEmailVerificationError(EcomError):
-    """User email could not be verified."""
+class AccountNotVerifiedError(EcomError):
+    """User account is not verified."""
 
     pass
 
 
-class AccountNotVerifiedError(EcomError):
-    """User account is not verified."""
+class InvalidEmailTokenError(EcomError):
+    """The email verification token is invalid or has expired."""
 
     pass
 

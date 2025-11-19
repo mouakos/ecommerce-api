@@ -11,12 +11,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import AccessTokenBearer, RefreshTokenBearer, get_current_user
 from app.core.config import settings
-from app.core.errors import AccountNotVerifiedError, UserEmailVerificationError
+from app.core.errors import (
+    AccountNotVerifiedError,
+    InvalidEmailTokenError,
+    UserNotFoundError,
+)
 from app.core.security import create_access_token, create_url_safe_token, decode_url_safe_token
 from app.db.redis import add_token_to_blocklist
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.user import Token, UserCreate, UserLogin, UserRead
+from app.schemas.user import EmailSchema, Token, UserCreate, UserLogin, UserRead
 from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
 
@@ -85,19 +89,44 @@ async def me(current_user: Annotated[User, Depends(get_current_user)]) -> UserRe
     return current_user
 
 
-@router.get("/verify/{token}", status_code=status.HTTP_200_OK)
-async def verify_user_account(
+@router.post("/verify/{token}", status_code=status.HTTP_200_OK)
+async def verify_user_email(
     token: str, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> JSONResponse:
-    """Verify a user's account using a token."""
+    """Confirm a user's email using a token."""
     user_email = decode_url_safe_token(token)
 
     if user_email:
         await AuthService.verify_user_email(session, user_email)
 
         return JSONResponse(
-            content={"message": "Account verified successfully"},
+            content={"message": "Email confirmed successfully"},
             status_code=status.HTTP_200_OK,
         )
 
-    raise UserEmailVerificationError()
+    raise InvalidEmailTokenError()
+
+
+@router.post("/resend-verification", status_code=status.HTTP_200_OK)
+async def resend_verification_email(
+    email_data: EmailSchema,
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    """Resend the email verification link to the current user."""
+    user = await AuthService.get_user_by_email(db, email_data.address)
+    if not user:
+        raise UserNotFoundError()
+
+    if user.is_verified:
+        return JSONResponse(
+            content={"message": "Account is already verified."},
+            status_code=status.HTTP_200_OK,
+        )
+    token = create_url_safe_token(user.email)
+
+    await EmailService.send_verification_email([email_data.address], token)
+
+    return JSONResponse(
+        content={"message": "Verification email resent successfully. Please check your email."},
+        status_code=status.HTTP_200_OK,
+    )

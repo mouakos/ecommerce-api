@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     )
     domain: str = Field(
         default="localhost:8000",
+        description="Base domain used for building absolute links in emails",
+        alias="DOMAIN",
+    )
+    domain: str = Field(
+        default="localhost:8000",
         description="Domain name for the application",
         alias="DOMAIN",
     )

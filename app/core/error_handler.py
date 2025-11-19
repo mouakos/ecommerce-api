@@ -15,6 +15,7 @@ from app.core.errors import (
     InsufficientPermissionError,
     InsufficientStockError,
     InvalidCredentialsError,
+    InvalidEmailTokenError,
     InvalidTokenError,
     OrderNotFoundError,
     ProductAlreadyExistsError,
@@ -23,7 +24,6 @@ from app.core.errors import (
     ReviewNotFoundError,
     RevokedTokenError,
     UserAlreadyExistsError,
-    UserEmailVerificationError,
     UserNotFoundError,
     UserReviewProductAlreadyExistsError,
 )
@@ -234,19 +234,6 @@ def register_exception_handlers(app: FastAPI) -> None:
             },
         )
 
-    @app.exception_handler(UserEmailVerificationError)
-    async def handle_user_email_verification_error(
-        _: Request, _exc: UserEmailVerificationError
-    ) -> JSONResponse:
-        """Handle user email verification errors."""
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={
-                "detail": "User email could not be verified.",
-                "error_code": "user_email_verification_error",
-            },
-        )
-
     @app.exception_handler(AccountNotVerifiedError)
     async def handle_account_not_verified_error(
         _: Request, _exc: AccountNotVerifiedError
@@ -269,6 +256,20 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "detail": "Error occurred while sending email.",
                 "error_code": "email_sending_error",
+            },
+        )
+
+    @app.exception_handler(InvalidEmailTokenError)
+    async def handle_invalid_email_token_error(
+        _: Request, _exc: InvalidEmailTokenError
+    ) -> JSONResponse:
+        """Handle invalid email token errors."""
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "detail": "The email verification token is invalid or has expired.",
+                "error_code": "invalid_email_token",
+                "solution": "Please request a new verification email.",
             },
         )
 

@@ -33,3 +33,9 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
+
+
+class EmailSchema(BaseModel):
+    """Schema for email operations."""
+
+    address: EmailStr
