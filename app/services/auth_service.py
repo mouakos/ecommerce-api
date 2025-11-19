@@ -5,6 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import (
     InvalidCredentialsError,
+    PasswordMismatchError,
     UserAlreadyExistsError,
     UserNotFoundError,
 )
@@ -90,3 +91,30 @@ class AuthService:
             user.is_verified = True
             db.add(user)
             await db.flush()
+
+    @staticmethod
+    async def change_user_password(
+        db: AsyncSession, user_email: str, new_password: str, confirm_new_password: str
+    ) -> None:
+        """Change a user's password.
+
+        Args:
+            db (AsyncSession): Database session.
+            user_email (str): The email of the user whose password is to be changed.
+            new_password (str): The new password.
+            confirm_new_password (str): Confirmation of the new password.
+
+        Raises:
+            UserNotFoundError: If the user does not exist.
+            PasswordMismatchError: If the new password and confirmation do not match.
+        """
+        user = await AuthService.get_user_by_email(db, user_email)
+        if not user:
+            raise UserNotFoundError()
+
+        if new_password != confirm_new_password:
+            raise PasswordMismatchError()
+
+        user.hashed_password = get_password_hash(new_password)
+        db.add(user)
+        await db.flush()

@@ -20,7 +20,14 @@ from app.core.security import create_access_token, create_url_safe_token, decode
 from app.db.redis import add_token_to_blocklist
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.user import EmailSchema, Token, UserCreate, UserLogin, UserRead
+from app.schemas.user import (
+    EmailSchema,
+    PasswordResetConfirm,
+    Token,
+    UserCreate,
+    UserLogin,
+    UserRead,
+)
 from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
 
@@ -34,8 +41,9 @@ async def create_new_user(
     """Register a new user and return the created user."""
     user = await AuthService.create_user(db, data)
     token = create_url_safe_token(user.email)
+    verification_link = f"http://{settings.domain}/api/v1/auth/verify/{token}"
 
-    await EmailService.send_verification_email([user.email], token)
+    await EmailService.send_verification_email([user.email], verification_link)
 
     return JSONResponse(
         content={
@@ -70,7 +78,7 @@ async def revoke_access_token(
     """Logout the current user by revoking the access token."""
     await add_token_to_blocklist(token_details["jti"])
     return JSONResponse(
-        content={"message": "Logged Out Successfully"}, status_code=status.HTTP_200_OK
+        content={"message": "User logged out successfully!"}, status_code=status.HTTP_200_OK
     )
 
 
@@ -89,7 +97,7 @@ async def me(current_user: Annotated[User, Depends(get_current_user)]) -> UserRe
     return current_user
 
 
-@router.post("/verify/{token}", status_code=status.HTTP_200_OK)
+@router.get("/verify/{token}", status_code=status.HTTP_200_OK)
 async def verify_user_email(
     token: str, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> JSONResponse:
@@ -100,7 +108,7 @@ async def verify_user_email(
         await AuthService.verify_user_email(session, user_email)
 
         return JSONResponse(
-            content={"message": "Email confirmed successfully"},
+            content={"message": "User account verified successfully!"},
             status_code=status.HTTP_200_OK,
         )
 
@@ -119,14 +127,58 @@ async def resend_verification_email(
 
     if user.is_verified:
         return JSONResponse(
-            content={"message": "Account is already verified."},
+            content={"message": "User account is already verified."},
             status_code=status.HTTP_200_OK,
         )
     token = create_url_safe_token(user.email)
+    verification_link = f"http://{settings.domain}/api/v1/auth/verify/{token}"
 
-    await EmailService.send_verification_email([email_data.address], token)
+    await EmailService.send_verification_email([email_data.address], verification_link)
 
     return JSONResponse(
         content={"message": "Verification email resent successfully. Please check your email."},
         status_code=status.HTTP_200_OK,
     )
+
+
+@router.post("/reset-password-request", status_code=status.HTTP_200_OK)
+async def request_password_reset(
+    email_data: EmailSchema,
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    """Request a password reset email to be sent to the user."""
+    user = await AuthService.get_user_by_email(db, email_data.address)
+    if not user:
+        raise UserNotFoundError()
+
+    token = create_url_safe_token(user.email)
+    reset_link = f"http://{settings.domain}/api/v1/auth/reset-password/{token}"
+
+    await EmailService.send_password_reset_email([email_data.address], reset_link)
+
+    return JSONResponse(
+        content={"message": "Password reset email sent successfully. Please check your email."},
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@router.get("/reset-password/{token}", status_code=status.HTTP_200_OK)
+async def reset_password(
+    token: str,
+    password_data: PasswordResetConfirm,
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> JSONResponse:
+    """Reset the user's password using the provided token."""
+    user_email = decode_url_safe_token(token)
+
+    if user_email:
+        await AuthService.change_user_password(
+            db, user_email, password_data.new_password, password_data.confirm_new_password
+        )
+
+        return JSONResponse(
+            content={"message": "Password reset successfully."},
+            status_code=status.HTTP_200_OK,
+        )
+
+    raise InvalidEmailTokenError()
