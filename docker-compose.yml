@@ -43,7 +43,7 @@ services:
       JWT_ALGORITHM: ${JWT_ALGORITHM}
 
       # Redis settings
-      REDIS_URL: redis://redis:6379/0
+      REDIS_URL: redis://${REDIS_HOST}:${REDIS_PORT}/${REDIS_DB}
 
       # Email settings
       MAIL_SERVER: ${MAIL_SERVER}
