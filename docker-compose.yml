@@ -53,6 +53,7 @@ services:
       MAIL_PASSWORD: ${MAIL_PASSWORD}
       MAIL_FROM: ${MAIL_FROM}
       MAIL_FROM_NAME: ${MAIL_FROM_NAME}
+      SUPPRESS_SEND: ${SUPPRESS_SEND}
 
     depends_on:
       redis:

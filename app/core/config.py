@@ -83,6 +83,11 @@ class Settings(BaseSettings):
         description="Domain name for the application",
         alias="DOMAIN",
     )
+    suppress_send: bool = Field(
+        default=False,
+        description="Suppress sending emails",
+        alias="SUPPRESS_SEND",
+    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
