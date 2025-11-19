@@ -10,10 +10,12 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import (
     AccessTokenRequiredError,
+    AccountNotVerifiedError,
     InsufficientPermissionError,
     InvalidTokenError,
     RefreshTokenRequiredError,
     RevokedTokenError,
+    UserNotFoundError,
 )
 from app.core.security import decode_token
 from app.db.redis import is_token_in_blocklist
@@ -38,7 +40,7 @@ class TokenBearer(HTTPBearer, ABC):
         token_details = decode_token(token)
 
         if not self.token_valid(token):
-            raise InvalidTokenError("Invalid token.")
+            raise InvalidTokenError()
 
         assert token_details is not None
 
@@ -90,14 +92,18 @@ async def get_current_user(
         token_details (dict[str, Any]): The decoded token data.
 
     Raises:
-        UnauthorizedError: If the token is invalid or expired or if the user is inactive or missing.
+        UserNotFoundError: If the user is not found.
+        AccountNotVerifiedError: If the user's account is not verified.
 
     Returns:
         User: The current user.
     """
     user = await db.get(User, UUID(token_details["sub"]))
     if not user:
-        raise InvalidTokenError()
+        raise UserNotFoundError()
+
+    if not user.is_verified:
+        raise AccountNotVerifiedError()
     return user
 
 

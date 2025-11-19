@@ -11,7 +11,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import AccessTokenBearer, RefreshTokenBearer, get_current_user
 from app.core.config import settings
-from app.core.errors import UserEmailVerificationError
+from app.core.errors import AccountNotVerifiedError, UserEmailVerificationError
 from app.core.security import create_access_token, create_url_safe_token, decode_url_safe_token
 from app.db.redis import add_token_to_blocklist
 from app.db.session import get_session
@@ -48,6 +48,8 @@ async def login(
 ) -> Token:
     """Authenticate a user and return access and refresh tokens."""
     user = await AuthService.authenticate_user(db, data.email, data.password)
+    if not user.is_verified:
+        raise AccountNotVerifiedError()
     access_token = create_access_token(subject=str(user.id))
     refresh_token = create_access_token(
         subject=str(user.id),

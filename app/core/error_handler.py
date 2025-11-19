@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.errors import (
     AccessTokenRequiredError,
+    AccountNotVerifiedError,
     CartItemNotFoundError,
     CategoryAlreadyExistsError,
     CategoryNotFoundError,
@@ -90,7 +91,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "User with email already exists.",
+                "detail": "User with this email already exists.",
                 "error_code": "user_already_exists",
             },
         )
@@ -147,7 +148,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "Product already exists.",
+                "detail": "Product with this name already exists under this category.",
                 "error_code": "product_already_exists",
             },
         )
@@ -170,7 +171,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "Category already exists.",
+                "detail": "Category already with this name already exists.",
                 "error_code": "category_already_exists",
             },
         )
@@ -242,6 +243,20 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "detail": "User email could not be verified.",
                 "error_code": "user_email_verification_error",
+            },
+        )
+
+    @app.exception_handler(AccountNotVerifiedError)
+    async def handle_account_not_verified_error(
+        _: Request, _exc: AccountNotVerifiedError
+    ) -> JSONResponse:
+        """Handle account not verified errors."""
+        return JSONResponse(
+            status_code=status.HTTP_403_FORBIDDEN,
+            content={
+                "detail": "User account is not verified.",
+                "error_code": "account_not_verified",
+                "solution": "Please verify your email to activate your account.",
             },
         )
 

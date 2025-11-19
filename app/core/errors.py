@@ -119,3 +119,9 @@ class UserEmailVerificationError(EcomError):
     """User email could not be verified."""
 
     pass
+
+
+class AccountNotVerifiedError(EcomError):
+    """User account is not verified."""
+
+    pass
