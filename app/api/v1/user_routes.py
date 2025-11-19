@@ -11,8 +11,10 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.deps import RoleChecker, get_current_user
 from app.db.session import get_session
 from app.models.user import User
+from app.schemas.address import AddressRead
 from app.schemas.base import Page
 from app.schemas.user import UserRead, UserRoleUpdate, UserUpdate
+from app.services.address_service import AddressService
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/api/v1/users", tags=["Users"])
@@ -104,3 +106,15 @@ async def delete_user(
     """Delete a user (admin only). Returns 204 on success."""
     await UserService.delete(db, user_id)
     # FastAPI will emit 204 with empty body
+
+
+@router.get("/{user_id}/addresses", response_model=Page[AddressRead], dependencies=[role_checker])
+async def list_user_addresses(
+    user_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_session)],
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> Page[AddressRead]:
+    """Admin list addresses for any user."""
+    items, total = await AddressService.list(db, user_id, offset=offset, limit=limit)
+    return Page[AddressRead](items=items, total=total, limit=limit, offset=offset)

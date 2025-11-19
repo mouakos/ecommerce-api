@@ -8,7 +8,8 @@ from sqlmodel import Column, DateTime, Field, Relationship
 from app.models.base import TimestampMixin, UUIDMixin
 from app.utils.time import utcnow
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
+    from app.models.address import Address
     from app.models.cart import Cart
     from app.models.order import Order
     from app.models.review import Review
@@ -36,5 +37,8 @@ class User(UUIDMixin, TimestampMixin, table=True):
         back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
     )
     reviews: list["Review"] = Relationship(
+        back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
+    )
+    addresses: list["Address"] = Relationship(
         back_populates="user", sa_relationship_kwargs={"lazy": "selectin"}, cascade_delete=True
     )

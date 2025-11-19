@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.core.errors import (
     AccessTokenRequiredError,
     AccountNotVerifiedError,
+    AddressNotFoundError,
     CartItemNotFoundError,
     CategoryAlreadyExistsError,
     CategoryNotFoundError,
@@ -234,6 +235,16 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"detail": "Review not found.", "error_code": "review_not_found"},
+        )
+
+    @app.exception_handler(AddressNotFoundError)
+    async def handle_address_not_found_error(
+        _: Request, _exc: AddressNotFoundError
+    ) -> JSONResponse:
+        """Handle address not found errors."""
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "Address not found.", "error_code": "address_not_found"},
         )
 
     @app.exception_handler(UserReviewProductAlreadyExistsError)
