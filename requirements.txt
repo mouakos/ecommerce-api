@@ -12,3 +12,5 @@ email-validator
 alembic
 typer
 redis
+fastapi-mail
+itsdangerous
