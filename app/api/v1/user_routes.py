@@ -94,3 +94,13 @@ async def set_user_role(
         status_code=status.HTTP_200_OK,
         content={"message": "User role updated successfully."},
     )
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[role_checker])
+async def delete_user(
+    user_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> None:
+    """Delete a user (admin only). Returns 204 on success."""
+    await UserService.delete(db, user_id)
+    # FastAPI will emit 204 with empty body

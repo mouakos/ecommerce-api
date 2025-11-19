@@ -148,3 +148,18 @@ class UserService:
         await db.flush()
         await db.refresh(user)
         return user
+
+    @staticmethod
+    async def delete(db: AsyncSession, user_id: UUID) -> None:
+        """Delete a user permanently.
+
+        Args:
+            db (AsyncSession): Database session.
+            user_id (UUID): User ID.
+
+        Raises:
+            UserNotFoundError: If the user does not exist.
+        """
+        user = await UserService.get(db, user_id)
+        await db.delete(user)
+        await db.flush()

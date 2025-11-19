@@ -180,3 +180,49 @@ async def test_admin_set_role(auth_admin_client: AsyncClient, db_session: AsyncS
     assert r.status_code == 200
     await db_session.refresh(u)
     assert u.role == "manager"
+
+
+@pytest.mark.asyncio
+async def test_admin_delete_user(auth_admin_client: AsyncClient, db_session: AsyncSession):
+    u = User(
+        email="todelete@example.com",
+        hashed_password=get_password_hash("passDel12"),
+        is_verified=True,
+    )
+    db_session.add(u)
+    await db_session.flush()
+    user_id = str(u.id)
+
+    r_del = await auth_admin_client.delete(f"{BASE}/{user_id}")
+    assert r_del.status_code == 204
+    # Attempt to fetch again should 404 via service (simulate via direct route call requires admin)
+    r_get = await auth_admin_client.get(f"{BASE}/{user_id}")
+    assert r_get.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_admin_delete_user_not_found(auth_admin_client: AsyncClient):
+    import uuid
+
+    fake_id = str(uuid.uuid4())
+    r_del = await auth_admin_client.delete(f"{BASE}/{fake_id}")
+    assert r_del.status_code == 404
+    body = r_del.json()
+    assert body["error_code"] == "user_not_found"
+
+
+@pytest.mark.asyncio
+async def test_delete_user_forbidden_non_admin(auth_client: AsyncClient, db_session: AsyncSession):
+    # create another user to attempt deletion
+    other = User(
+        email="other@example.com",
+        hashed_password=get_password_hash("OtherPass9"),
+        is_verified=True,
+    )
+    db_session.add(other)
+    await db_session.flush()
+    other_id = str(other.id)
+    r_del = await auth_client.delete(f"{BASE}/{other_id}")
+    assert r_del.status_code == 403
+    body = r_del.json()
+    assert body["error_code"] == "insufficient_permissions"
