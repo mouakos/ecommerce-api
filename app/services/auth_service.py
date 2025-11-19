@@ -6,6 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.core.errors import (
     InvalidCredentialsError,
     UserAlreadyExistsError,
+    UserNotFoundError,
 )
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
@@ -70,3 +71,22 @@ class AuthService:
         if not user or not verify_password(password, user.hashed_password):
             raise InvalidCredentialsError()
         return user
+
+    @staticmethod
+    async def verify_user_email(db: AsyncSession, email: str) -> None:
+        """Verify a user's email.
+
+        Args:
+            db (AsyncSession): Database session.
+            email (str): User email.
+
+        Raises:
+            UserNotFoundError: If the user does not exist.
+        """
+        user = await AuthService.get_user_by_email(db, email)
+        if not user:
+            raise UserNotFoundError()
+        if user:
+            user.is_verified = True
+            db.add(user)
+            await db.flush()

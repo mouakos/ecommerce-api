@@ -11,22 +11,34 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import AccessTokenBearer, RefreshTokenBearer, get_current_user
 from app.core.config import settings
-from app.core.security import create_access_token
+from app.core.errors import UserEmailVerificationError
+from app.core.security import create_access_token, create_url_safe_token, decode_url_safe_token
 from app.db.redis import add_token_to_blocklist
 from app.db.session import get_session
 from app.models.user import User
 from app.schemas.user import Token, UserCreate, UserLogin, UserRead
 from app.services.auth_service import AuthService
+from app.services.email_service import EmailService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
 
-@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def create_new_user(
     data: UserCreate, db: Annotated[AsyncSession, Depends(get_session)]
-) -> UserRead:
+) -> JSONResponse:
     """Register a new user and return the created user."""
-    return await AuthService.create_user(db, data)
+    user = await AuthService.create_user(db, data)
+    token = create_url_safe_token(user.email)
+
+    await EmailService.send_verification_email([user.email], token)
+
+    return JSONResponse(
+        content={
+            "message": "User registered successfully. Please check your email to verify your account."
+        },
+        status_code=status.HTTP_201_CREATED,
+    )
 
 
 @router.post("/login", response_model=Token)
@@ -69,3 +81,21 @@ async def get_new_access_token(
 async def me(current_user: Annotated[User, Depends(get_current_user)]) -> UserRead:
     """Get the current authenticated user."""
     return current_user
+
+
+@router.get("/verify/{token}", status_code=status.HTTP_200_OK)
+async def verify_user_account(
+    token: str, session: Annotated[AsyncSession, Depends(get_session)]
+) -> JSONResponse:
+    """Verify a user's account using a token."""
+    user_email = decode_url_safe_token(token)
+
+    if user_email:
+        await AuthService.verify_user_email(session, user_email)
+
+        return JSONResponse(
+            content={"message": "Account verified successfully"},
+            status_code=status.HTTP_200_OK,
+        )
+
+    raise UserEmailVerificationError()

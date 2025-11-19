@@ -21,6 +21,7 @@ class User(UUIDMixin, TimestampMixin, table=True):
     email: str = Field(index=True, unique=True)
     hashed_password: str = Field(exclude=True)
     is_active: bool = Field(default=True)
+    is_verified: bool = Field(default=False)
     role: str = Field(default="user")
     updated_at: datetime = Field(
         default_factory=utcnow,
