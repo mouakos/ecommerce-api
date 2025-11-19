@@ -121,7 +121,7 @@ async def resend_verification_email(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
     """Resend the email verification link to the current user."""
-    user = await AuthService.get_user_by_email(db, email_data.address)
+    user = await AuthService.get_user_by_email(db, email_data.email)
     if not user:
         raise UserNotFoundError()
 
@@ -133,7 +133,7 @@ async def resend_verification_email(
     token = create_url_safe_token(user.email)
     verification_link = f"http://{settings.domain}/api/v1/auth/verify/{token}"
 
-    await EmailService.send_verification_email([email_data.address], verification_link)
+    await EmailService.send_verification_email([email_data.email], verification_link)
 
     return JSONResponse(
         content={"message": "Verification email resent successfully. Please check your email."},
@@ -147,14 +147,14 @@ async def request_password_reset(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
     """Request a password reset email to be sent to the user."""
-    user = await AuthService.get_user_by_email(db, email_data.address)
+    user = await AuthService.get_user_by_email(db, email_data.email)
     if not user:
         raise UserNotFoundError()
 
     token = create_url_safe_token(user.email)
     reset_link = f"http://{settings.domain}/api/v1/auth/reset-password/{token}"
 
-    await EmailService.send_password_reset_email([email_data.address], reset_link)
+    await EmailService.send_password_reset_email([email_data.email], reset_link)
 
     return JSONResponse(
         content={"message": "Password reset email sent successfully. Please check your email."},

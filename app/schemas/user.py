@@ -38,7 +38,7 @@ class Token(BaseModel):
 class EmailSchema(BaseModel):
     """Schema for email operations."""
 
-    address: EmailStr
+    email: EmailStr
 
 
 class PasswordResetConfirm(BaseModel):
