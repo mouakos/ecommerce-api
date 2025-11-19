@@ -59,10 +59,17 @@ class EmailService:
         await EmailService.send_email(message)
 
     @staticmethod
-    async def send_verification_email(addresses: list[EmailStr], token: str) -> None:
+    async def send_verification_email(addresses: list[EmailStr], verification_link: str) -> None:
         """Send an email verification message to the specified addresses."""
-        verification_link = f"http://{settings.domain}/api/v1/auth/verify/{token}"
         html = f"<h1>Email Verification</h1><p>Please verify your email by clicking <a href='{verification_link}'>here</a>.</p>"
         subject = "Verify your email address"
+        message = EmailService.create_message(addresses, subject, html)
+        await EmailService.send_email(message)
+
+    @staticmethod
+    async def send_password_reset_email(addresses: list[EmailStr], reset_link: str) -> None:
+        """Send a password reset email to the specified addresses."""
+        html = f"<h1>Password Reset</h1><p>You can reset your password by clicking <a href='{reset_link}'>here</a>.</p>"
+        subject = "Reset your password"
         message = EmailService.create_message(addresses, subject, html)
         await EmailService.send_email(message)
