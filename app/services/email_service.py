@@ -1,7 +1,5 @@
 """Service for sending emails using FastAPI-Mail."""
 
-from pathlib import Path
-
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 from fastapi_mail.errors import ConnectionErrors
 from pydantic import EmailStr
@@ -9,7 +7,7 @@ from pydantic import EmailStr
 from app.core.config import settings
 from app.core.errors import EmailSendingError
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+# BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 mail_config = ConnectionConfig(
@@ -23,7 +21,7 @@ mail_config = ConnectionConfig(
     MAIL_SSL_TLS=False,
     USE_CREDENTIALS=True,
     VALIDATE_CERTS=True,
-    TEMPLATE_FOLDER=Path(BASE_DIR, "templates"),
+    # TEMPLATE_FOLDER=Path(BASE_DIR, "templates"),
     SUPPRESS_SEND=int(settings.suppress_send),
 )
 
