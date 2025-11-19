@@ -21,6 +21,7 @@ from app.core.errors import (
     ReviewNotFoundError,
     RevokedTokenError,
     UserAlreadyExistsError,
+    UserEmailVerificationError,
     UserNotFoundError,
     UserReviewProductAlreadyExistsError,
 )
@@ -228,6 +229,19 @@ def register_exception_handlers(app: FastAPI) -> None:
             content={
                 "detail": "User has already reviewed this product.",
                 "error_code": "user_review_product_already_exists",
+            },
+        )
+
+    @app.exception_handler(UserEmailVerificationError)
+    async def handle_user_email_verification_error(
+        _: Request, _exc: UserEmailVerificationError
+    ) -> JSONResponse:
+        """Handle user email verification errors."""
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "detail": "User email could not be verified.",
+                "error_code": "user_email_verification_error",
             },
         )
 

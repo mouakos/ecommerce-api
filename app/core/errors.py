@@ -113,3 +113,9 @@ class UserReviewProductAlreadyExistsError(EcomError):
     """User has already reviewed this product."""
 
     pass
+
+
+class UserEmailVerificationError(EcomError):
+    """User email could not be verified."""
+
+    pass
