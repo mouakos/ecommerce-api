@@ -80,21 +80,6 @@ async def test_register_validation_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login_success_and_me(client: AsyncClient):
-    await register(client, "c@example.com", "secret")
-    await verify(client, "c@example.com")
-    token_resp = await login_json(client, "c@example.com", "secret")
-    assert token_resp.status_code == 200, token_resp.text
-    token = token_resp.json()["access_token"]
-
-    r_me = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
-    assert r_me.status_code == 200
-    me = r_me.json()
-    assert me["email"] == "c@example.com"
-    assert "id" in me
-
-
-@pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient):
     await register(client, "d@example.com", "secret")
     r = await login_json(client, "d@example.com", "bad-password")
@@ -125,14 +110,14 @@ async def test_login_unknown_user(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_me_unauthorized_no_token(client: AsyncClient):
-    r = await client.get(f"{BASE}/me")
+    r = await client.get("/api/v1/users/me")
     # HTTPBearer returns 403 when Authorization header is missing
     assert r.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_me_with_invalid_token(client: AsyncClient):
-    r = await client.get(f"{BASE}/me", headers={"Authorization": "Bearer not-a-real-token"})
+    r = await client.get("/api/v1/users/me", headers={"Authorization": "Bearer not-a-real-token"})
     assert r.status_code == 401
     # New error message per TokenBearer implementation
     assert r.json()["detail"] == "Token is invalid or expired."
@@ -147,7 +132,7 @@ async def test_me_with_tampered_token(client: AsyncClient):
     assert len(parts) == 3
     parts[-1] = "xxxxinvalidsignature"  # replace signature with garbage
     bad = ".".join(parts)
-    r = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {bad}"})
+    r = await client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {bad}"})
     assert r.status_code == 401
     assert r.json()["detail"] == "Token is invalid or expired."
 
@@ -165,7 +150,7 @@ async def test_logout_revokes_token(client: AsyncClient):
     assert r_logout.status_code == 200
 
     # Attempt to reuse token
-    r_me = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
+    r_me = await client.get("/api/v1/users/me", headers={"Authorization": f"Bearer {token}"})
     assert r_me.status_code == 401
     assert r_me.json()["detail"] == "Token is invalid or has been revoked."
 

@@ -23,6 +23,9 @@ class User(UUIDMixin, TimestampMixin, table=True):
     is_active: bool = Field(default=True)
     is_verified: bool = Field(default=False)
     role: str = Field(default="user")
+    first_name: str | None = None
+    last_name: str | None = None
+    phone_number: str | None = None
     updated_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False),

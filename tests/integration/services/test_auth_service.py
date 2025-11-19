@@ -17,6 +17,7 @@ from app.core.errors import (
 from app.core.security import verify_password
 from app.schemas.user import UserCreate
 from app.services.auth_service import AuthService
+from app.services.user_service import UserService
 
 
 @pytest.mark.asyncio
@@ -65,8 +66,8 @@ async def test_verify_user_email_sets_flag(db_session: AsyncSession):
     user = await AuthService.create_user(db_session, data)
     assert user.is_verified is False
     await AuthService.verify_user_email(db_session, user.email)
-    # refresh state
-    refreshed = await AuthService.get_user_by_email(db_session, user.email)
+    # refresh state via UserService
+    refreshed = await UserService.get_by_email(db_session, user.email)
     assert refreshed is not None
     assert refreshed.is_verified is True
 
@@ -87,7 +88,7 @@ async def test_change_user_password_success(db_session: AsyncSession):
         "NewPass88",
         "NewPass88",
     )
-    updated = await AuthService.get_user_by_email(db_session, user.email)
+    updated = await UserService.get_by_email(db_session, user.email)
     assert updated is not None
     assert verify_password("NewPass88", updated.hashed_password)
     assert not verify_password("OldPass77", updated.hashed_password)

@@ -1,0 +1,113 @@
+"""Integration tests for user management routes."""
+
+import pytest
+from httpx import AsyncClient
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from app.core.security import get_password_hash
+from app.models.user import User
+
+BASE = "/api/v1/users"
+
+
+@pytest.mark.asyncio
+async def test_list_users_admin(auth_admin_client: AsyncClient, db_session: AsyncSession):
+    # create some users
+    for i in range(3):
+        u = User(
+            email=f"user{i}@example.com",
+            hashed_password=get_password_hash("pass123"),
+            is_verified=True,
+        )
+        db_session.add(u)
+    await db_session.flush()
+
+    r = await auth_admin_client.get(BASE + "/?limit=10")
+    assert r.status_code == 200
+    body = r.json()
+    assert "total" in body and "items" in body
+    assert body["total"] >= 3
+    assert all("email" in itm for itm in body["items"])
+
+
+@pytest.mark.asyncio
+async def test_login_success_and_me(client: AsyncClient):
+    """Register, verify, login, and fetch /users/me."""
+    # Reuse auth flow here to ensure /users/me returns correct shape
+    r_reg = await client.post(
+        "/api/v1/auth/register", json={"email": "c@example.com", "password": "secret"}
+    )
+    assert r_reg.status_code == 201
+    # verify
+    from app.core.security import create_url_safe_token
+
+    token = create_url_safe_token("c@example.com")
+    r_verify = await client.get(f"/api/v1/auth/verify/{token}")
+    assert r_verify.status_code == 200
+    # login
+    r_login = await client.post(
+        "/api/v1/auth/login", json={"email": "c@example.com", "password": "secret"}
+    )
+    assert r_login.status_code == 200
+    access = r_login.json()["access_token"]
+    r_me = await client.get(BASE + "/me", headers={"Authorization": f"Bearer {access}"})
+    assert r_me.status_code == 200, r_me.text
+    me = r_me.json()
+    assert me["email"] == "c@example.com"
+    assert "id" in me
+
+
+@pytest.mark.asyncio
+async def test_list_users_non_admin_forbidden(auth_client: AsyncClient):
+    r = await auth_client.get(BASE + "/")
+    assert r.status_code == 403
+    body = r.json()
+    assert body["error_code"] == "insufficient_permissions"
+
+
+@pytest.mark.asyncio
+async def test_update_me_profile(auth_client: AsyncClient):
+    r = await auth_client.patch(BASE + "/me", json={"first_name": "Alice"})
+    assert r.status_code == 200
+    assert r.json()["first_name"] == "Alice"
+
+
+@pytest.mark.asyncio
+async def test_admin_activate_deactivate_user(
+    auth_admin_client: AsyncClient, db_session: AsyncSession
+):
+    u = User(
+        email="toggle@example.com",
+        hashed_password=get_password_hash("pass1234"),
+        is_verified=True,
+    )
+    db_session.add(u)
+    await db_session.flush()
+    user_id = str(u.id)
+
+    r_deact = await auth_admin_client.post(f"{BASE}/{user_id}/deactivate")
+    assert r_deact.status_code == 200
+    await db_session.refresh(u)
+    assert u.is_active is False
+
+    r_act = await auth_admin_client.post(f"{BASE}/{user_id}/activate")
+    assert r_act.status_code == 200
+    await db_session.refresh(u)
+    assert u.is_active is True
+
+
+@pytest.mark.asyncio
+async def test_admin_set_role(auth_admin_client: AsyncClient, db_session: AsyncSession):
+    u = User(
+        email="rolechange@example.com",
+        hashed_password=get_password_hash("pass5678"),
+        is_verified=True,
+    )
+    db_session.add(u)
+    await db_session.flush()
+    user_id = str(u.id)
+
+    r = await auth_admin_client.post(f"{BASE}/{user_id}/role", json={"role": "manager"})
+    assert r.status_code == 200
+    await db_session.refresh(u)
+    assert u.role == "manager"

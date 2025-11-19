@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import AccessTokenBearer, RefreshTokenBearer, get_current_user
+from app.api.deps import AccessTokenBearer, RefreshTokenBearer
 from app.core.config import settings
 from app.core.errors import (
     AccountNotVerifiedError,
@@ -19,17 +19,16 @@ from app.core.errors import (
 from app.core.security import create_access_token, create_url_safe_token, decode_url_safe_token
 from app.db.redis import add_token_to_blocklist
 from app.db.session import get_session
-from app.models.user import User
 from app.schemas.user import (
     EmailSchema,
     PasswordResetConfirm,
     Token,
     UserCreate,
     UserLogin,
-    UserRead,
 )
 from app.services.auth_service import AuthService
 from app.services.email_service import EmailService
+from app.services.user_service import UserService
 
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
@@ -94,12 +93,6 @@ async def get_new_access_token(
     return Token(access_token=new_access_token)
 
 
-@router.get("/me", response_model=UserRead)
-async def me(current_user: Annotated[User, Depends(get_current_user)]) -> UserRead:
-    """Get the current authenticated user."""
-    return current_user
-
-
 @router.get("/verify/{token}", status_code=status.HTTP_200_OK)
 async def verify_user_email(
     token: str, session: Annotated[AsyncSession, Depends(get_session)]
@@ -124,7 +117,7 @@ async def resend_verification_email(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
     """Resend the email verification link to the current user."""
-    user = await AuthService.get_user_by_email(db, email_data.email)
+    user = await UserService.get_by_email(db, email_data.email)
     if not user:
         raise UserNotFoundError()
 
@@ -150,7 +143,7 @@ async def request_password_reset(
     db: Annotated[AsyncSession, Depends(get_session)],
 ) -> JSONResponse:
     """Request a password reset email to be sent to the user."""
-    user = await AuthService.get_user_by_email(db, email_data.email)
+    user = await UserService.get_by_email(db, email_data.email)
     if not user:
         raise UserNotFoundError()
 
