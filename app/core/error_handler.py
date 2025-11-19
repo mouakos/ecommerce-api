@@ -172,7 +172,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_409_CONFLICT,
             content={
-                "detail": "Category already with this name already exists.",
+                "detail": "Category with this name already exists.",
                 "error_code": "category_already_exists",
             },
         )
