@@ -22,7 +22,8 @@ async def register(client: AsyncClient, email: str, password: str):
 
 async def verify(client: AsyncClient, email: str):
     token = create_url_safe_token(email)
-    return await client.post(f"{BASE}/verify/{token}")
+    # Verification endpoint uses GET semantics
+    return await client.get(f"{BASE}/verify/{token}")
 
 
 async def login_json(client: AsyncClient, email: str, password: str):

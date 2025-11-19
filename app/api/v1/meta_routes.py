@@ -1,4 +1,4 @@
-"""Meta / utility routes (health, readiness, info)."""
+"""Meta / utility routes (health, readiness, test email)."""
 
 from fastapi import APIRouter
 
@@ -13,3 +13,4 @@ async def health() -> dict[str, str]:
     to verify the application process is responsive.
     """
     return {"status": "ok"}
+
