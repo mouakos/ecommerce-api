@@ -42,11 +42,22 @@ jobs:
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
       REFRESH_TOKEN_EXPIRE_DAYS: 7
       JWT_ALGORITHM: HS256
+      
+      # redis settings
       REDIS_URL: redis://localhost:6379/0
       REDIS_HOST: localhost
       REDIS_PORT: 6379
       REDIS_DB: 0
+
+      # Email settings
+      MAIL_USERNAME: ""
+      MAIL_FROM_NAME: ""
+      MAIL_FROM: "user@example.com"
+      MAIL_PORT: 0
+      MAIL_SERVER: ""
+      MAIL_PASSWORD: ""
       SUPPRESS_SEND: True
+      DOMAIN: ""
 
     steps:
       - name: 📥 Checkout repository

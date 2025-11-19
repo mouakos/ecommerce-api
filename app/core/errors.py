@@ -131,3 +131,9 @@ class EmailSendingError(EcomError):
     """Error occurred while sending an email."""
 
     pass
+
+
+class PasswordMismatchError(EcomError):
+    """The provided passwords do not match."""
+
+    pass

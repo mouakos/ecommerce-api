@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     jwt_algorithm: str = Field(
         default="HS256", description="JWT signing algorithm", alias="JWT_ALGORITHM"
     )
+    email_token_expire_hours: int = Field(
+        default=24,
+        description="Email token expiration time in hours",
+        alias="EMAIL_TOKEN_EXPIRE_HOURS",
+    )
     # email
     mail_server: str = Field(
         default="",
@@ -73,15 +78,15 @@ class Settings(BaseSettings):
         description="Email from name",
         alias="MAIL_FROM_NAME",
     )
-    suppress_send: bool = Field(
-        default=False,
-        description="Suppress sending emails (for testing)",
-        alias="SUPPRESS_SEND",
-    )
     domain: str = Field(
         default="localhost:8000",
         description="Domain name for the application",
         alias="DOMAIN",
+    )
+    suppress_send: bool = Field(
+        default=False,
+        description="Suppress sending emails",
+        alias="SUPPRESS_SEND",
     )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

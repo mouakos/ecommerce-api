@@ -38,4 +38,11 @@ class Token(BaseModel):
 class EmailSchema(BaseModel):
     """Schema for email operations."""
 
-    address: EmailStr
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    """Schema for confirming a password reset."""
+
+    new_password: str = Field(..., min_length=6)
+    confirm_new_password: str

@@ -1,4 +1,4 @@
-"""Meta / utility routes (health, readiness, info)."""
+"""Meta / utility routes (health, readiness, test email)."""
 
 from fastapi import APIRouter
 

@@ -18,6 +18,7 @@ from app.core.errors import (
     InvalidEmailTokenError,
     InvalidTokenError,
     OrderNotFoundError,
+    PasswordMismatchError,
     ProductAlreadyExistsError,
     ProductNotFoundError,
     RefreshTokenRequiredError,
@@ -201,6 +202,20 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"detail": "Cart is empty.", "error_code": "empty_cart"},
+        )
+
+    @app.exception_handler(PasswordMismatchError)
+    async def handle_password_mismatch_error(
+        _: Request, _exc: PasswordMismatchError
+    ) -> JSONResponse:
+        """Handle password mismatch errors."""
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "detail": "The provided passwords do not match.",
+                "error_code": "password_mismatch",
+                "solution": "Please ensure both passwords match before submitting.",
+            },
         )
 
     @app.exception_handler(CartItemNotFoundError)

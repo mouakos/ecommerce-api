@@ -106,7 +106,8 @@ async def test_add_item_validation_errors(auth_client: AsyncClient):
 # ---------------- Update Item ----------------
 @pytest.mark.asyncio
 async def test_update_item_quantity_and_remove_when_zero(auth_client: AsyncClient, db_session):
-    product = ProductFactory()
+    # Ensure deterministic sufficient stock for quantity update (>=5)
+    product = ProductFactory(stock=10)
     await db_session.flush()
 
     added = await auth_client.post(
