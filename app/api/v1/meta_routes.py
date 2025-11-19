@@ -13,4 +13,3 @@ async def health() -> dict[str, str]:
     to verify the application process is responsive.
     """
     return {"status": "ok"}
-
