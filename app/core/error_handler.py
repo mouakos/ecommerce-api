@@ -10,6 +10,7 @@ from app.core.errors import (
     CategoryAlreadyExistsError,
     CategoryNotFoundError,
     EcomError,
+    EmailSendingError,
     EmptyCartError,
     InsufficientPermissionError,
     InsufficientStockError,
@@ -257,6 +258,17 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "detail": "User account is not verified.",
                 "error_code": "account_not_verified",
                 "solution": "Please verify your email to activate your account.",
+            },
+        )
+
+    @app.exception_handler(EmailSendingError)
+    async def handle_email_sending_error(_: Request, _exc: EmailSendingError) -> JSONResponse:
+        """Handle email sending errors."""
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "detail": "Error occurred while sending email.",
+                "error_code": "email_sending_error",
             },
         )
 

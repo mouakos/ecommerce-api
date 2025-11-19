@@ -3,9 +3,11 @@
 from pathlib import Path
 
 from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
+from fastapi_mail.errors import ConnectionErrors
 from pydantic import EmailStr
 
 from app.core.config import settings
+from app.core.errors import EmailSendingError
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -42,7 +44,11 @@ class EmailService:
     @staticmethod
     async def send_email(message: MessageSchema) -> None:
         """Send an email message."""
-        await mail.send_message(message)
+        try:
+            await mail.send_message(message)
+            return True
+        except ConnectionErrors as e:
+            raise EmailSendingError() from e
 
     @staticmethod
     async def send_welcome_email(addresses: list[EmailStr]) -> None:

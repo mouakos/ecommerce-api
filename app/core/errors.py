@@ -125,3 +125,9 @@ class AccountNotVerifiedError(EcomError):
     """User account is not verified."""
 
     pass
+
+
+class EmailSendingError(EcomError):
+    """Error occurred while sending an email."""
+
+    pass
