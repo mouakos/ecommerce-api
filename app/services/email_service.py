@@ -38,7 +38,10 @@ class EmailService:
     def create_message(recipients: list[EmailStr], subject: str, body: str) -> MessageSchema:
         """Create an email message."""
         return MessageSchema(
-            recipients=recipients, subject=subject, body=body, subtype=MessageType.html
+            recipients=recipients,  # type: ignore [arg-type]
+            subject=subject,
+            body=body,
+            subtype=MessageType.html,
         )
 
     @staticmethod
@@ -46,7 +49,6 @@ class EmailService:
         """Send an email message."""
         try:
             await mail.send_message(message)
-            return True
         except ConnectionErrors as e:
             raise EmailSendingError() from e
 

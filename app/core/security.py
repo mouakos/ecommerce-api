@@ -77,7 +77,7 @@ def create_url_safe_token(user_email: str) -> str:
     return str(serializer.dumps(user_email))
 
 
-def decode_url_safe_token(private_key: str, max_age=1800) -> str | None:
+def decode_url_safe_token(private_key: str, max_age: int = 1800) -> str | None:
     """Decode a URL-safe token."""
     try:
         return str(serializer.loads(private_key, max_age=max_age))

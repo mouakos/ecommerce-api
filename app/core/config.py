@@ -1,5 +1,6 @@
 """Configuration settings for the application using Pydantic."""
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlmodel import Field
 
@@ -57,7 +58,7 @@ class Settings(BaseSettings):
         description="Email username",
         alias="MAIL_USERNAME",
     )
-    mail_password: str = Field(
+    mail_password: SecretStr = Field(
         default="",
         description="Email password",
         alias="MAIL_PASSWORD",
@@ -76,11 +77,6 @@ class Settings(BaseSettings):
         default=False,
         description="Suppress sending emails (for testing)",
         alias="SUPPRESS_SEND",
-    )
-    domain: str = Field(
-        default="localhost:8000",
-        description="Base domain used for building absolute links in emails",
-        alias="DOMAIN",
     )
     domain: str = Field(
         default="localhost:8000",
