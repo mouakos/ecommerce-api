@@ -2,8 +2,8 @@
 
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import AddressNotFoundError
 from app.models.address import Address
@@ -29,11 +29,11 @@ class AddressService:
             tuple[list[Address], int]: A tuple containing a list of Address objects and the total count of addresses.
         """
         stmt = select(Address).where(Address.user_id == user_id).offset(offset).limit(limit)
-        res = await db.execute(stmt)
-        items: list[Address] = list(res.scalars().all())
+        res = await db.exec(stmt)
+        items: list[Address] = list(res.all())
         count_stmt = select(Address).where(Address.user_id == user_id)
-        count_res = await db.execute(count_stmt)
-        total = len(count_res.scalars().all())
+        count_res = await db.exec(count_stmt)
+        total = len(count_res.all())
         return items, total
 
     @staticmethod
@@ -54,8 +54,8 @@ class AddressService:
         stmt = select(Address).where(Address.id == address_id)
         if user_id is not None:
             stmt = stmt.where(Address.user_id == user_id)
-        res = await db.execute(stmt)
-        address = res.scalar_one_or_none()
+        res = await db.exec(stmt)
+        address = res.first()
         if not address:
             raise AddressNotFoundError()
         return address
