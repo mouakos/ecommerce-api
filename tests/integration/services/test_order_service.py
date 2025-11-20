@@ -284,6 +284,46 @@ async def test_update_order_status_invalid_transition(
 
 
 @pytest.mark.asyncio
+async def test_update_order_status_idempotent(
+    db_session: AsyncSession, product_factory, address_factory
+):
+    """Updating an order to the same status should return unchanged order (idempotent)."""
+    user = User(
+        email="statusidem@example.com",
+        hashed_password=get_password_hash("Pass123"),
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    prod = await product_factory("IdemStatusItem", price=8.0, stock=3)
+    await CartService.add_item_to_user_cart(
+        user.id, CartItemCreate(product_id=prod.id, quantity=1), db_session
+    )
+    ship = await address_factory(
+        user.id, line1="15 Ship St", city="Paris", state="FR-IDF", postal_code="75115", country="fr"
+    )
+    bill = await address_factory(
+        user.id,
+        line1="16 Bill Ave",
+        city="Paris",
+        state="FR-IDF",
+        postal_code="75116",
+        country="fr",
+    )
+    order = await OrderService.checkout(
+        user.id,
+        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        db=db_session,
+    )
+    original_number = order.number
+    original_status = order.status
+    updated = await OrderService.update_order_status(order.id, original_status, db_session)
+    assert updated.id == order.id
+    assert updated.number == original_number
+    assert updated.status == original_status
+
+
+@pytest.mark.asyncio
 async def test_checkout_with_addresses_persists_ids(
     db_session: AsyncSession, product_factory, address_factory
 ):
