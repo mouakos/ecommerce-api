@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlmodel import func, select
+from sqlmodel import desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.enums import UserRole
@@ -66,7 +66,7 @@ class UserService:
         Returns:
             tuple[list[User], int]: List of users and total count.
         """
-        base_stmt = select(User).order_by(User.created_at.desc())
+        base_stmt = select(User).order_by(desc(User.created_at))
         count_stmt = select(func.count()).select_from(User)
         if search:
             pattern = f"%{search.lower()}%"
@@ -147,8 +147,6 @@ class UserService:
         user.role = role
         db.add(user)
         await db.flush()
-        await db.refresh(user)
-        return user
 
     @staticmethod
     async def delete(db: AsyncSession, user_id: UUID) -> None:

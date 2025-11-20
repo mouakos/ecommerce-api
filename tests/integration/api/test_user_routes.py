@@ -182,6 +182,7 @@ async def test_admin_set_role(auth_admin_client: AsyncClient, db_session: AsyncS
     await db_session.refresh(u)
     assert u.role == UserRole.ADMIN
 
+
 @pytest.mark.asyncio
 async def test_admin_delete_user(auth_admin_client: AsyncClient, db_session: AsyncSession):
     u = User(
