@@ -6,7 +6,12 @@ from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.enums import OrderStatus
-from app.core.errors import EmptyCartError, InsufficientStockError, OrderNotFoundError
+from app.core.errors import (
+    AddressNotFoundError,
+    EmptyCartError,
+    InsufficientStockError,
+    OrderNotFoundError,
+)
 from app.models.address import Address
 from app.models.order import Order, OrderItem
 from app.models.product import Product
@@ -84,14 +89,10 @@ class OrderService:
 
         shipping_addr = await _load_address(shipping_address_id)
         if shipping_address_id and (not shipping_addr or shipping_addr.user_id != user_id):
-            from app.core.errors import AddressNotFoundError
-
             raise AddressNotFoundError()
 
         billing_addr = await _load_address(billing_address_id)
         if billing_address_id and (not billing_addr or billing_addr.user_id != user_id):
-            from app.core.errors import AddressNotFoundError
-
             raise AddressNotFoundError()
 
         # 5) Create order + items, decrement stock (single transaction)
