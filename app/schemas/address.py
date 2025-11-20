@@ -27,6 +27,7 @@ class AddressRead(AddressCreate, UUIDMixin, TimestampMixin):
 
     user_id: UUID
 
+
 class AddressUpdate(BaseModel):
     """Partial update payload for an address (no default flags)."""
 

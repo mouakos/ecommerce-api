@@ -12,7 +12,7 @@ from app.api.deps import RoleChecker, get_current_user
 from app.core.enums import UserRole
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.order import OrderCheckout, OrderRead, OrderStatusUpdate
+from app.schemas.order import OrderAddress, OrderRead, OrderStatusUpdate
 from app.services.order_service import OrderService
 
 router = APIRouter(prefix="/api/v1/orders", tags=["Orders"])
@@ -21,14 +21,14 @@ role_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 @router.post("/", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
 async def checkout(
-    order_checkout: OrderCheckout,
+    order_address: OrderAddress,
     db: Annotated[AsyncSession, Depends(get_session)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OrderRead:
     """Checkout the user's cart and create an order."""
     return await OrderService.checkout(
         current_user.id,
-        order_checkout=order_checkout,
+        order_address=order_address,
         db=db,
     )
 

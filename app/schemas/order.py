@@ -33,8 +33,8 @@ class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
 
-class OrderCheckout(BaseModel):
-    """Schema for initiating a checkout with optional address references."""
+class OrderAddress(BaseModel):
+    """Schema for providing mandatory shipping and billing address IDs during checkout."""
 
     shipping_address_id: UUID
     billing_address_id: UUID

@@ -15,7 +15,7 @@ from app.core.security import get_password_hash
 from app.models.product import Product
 from app.models.user import User
 from app.schemas.cart import CartItemCreate
-from app.schemas.order import OrderCheckout
+from app.schemas.order import OrderAddress
 from app.services.cart_service import CartService
 from app.services.order_service import OrderService
 
@@ -45,7 +45,7 @@ async def test_checkout_success_creates_order_and_decrements_stock(
     )
     order = await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
         db=db_session,
     )
     assert order.id is not None
@@ -78,7 +78,7 @@ async def test_checkout_empty_cart_raises(db_session: AsyncSession, address_fact
     with pytest.raises(EmptyCartError):
         await OrderService.checkout(
             user.id,
-            order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+            order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
             db=db_session,
         )
 
@@ -111,7 +111,7 @@ async def test_checkout_insufficient_stock_raises(
     with pytest.raises(InsufficientStockError):
         await OrderService.checkout(
             user.id,
-            order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+            order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
             db=db_session,
         )
 
@@ -142,7 +142,7 @@ async def test_list_user_orders_returns_in_desc_created_order(
     )
     await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
         db=db_session,
     )
     # Second order
@@ -151,7 +151,7 @@ async def test_list_user_orders_returns_in_desc_created_order(
     )
     await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
         db=db_session,
     )
 
@@ -186,7 +186,7 @@ async def test_get_user_order_success(db_session: AsyncSession, product_factory,
     )
     order = await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
         db=db_session,
     )
 
@@ -237,7 +237,7 @@ async def test_update_order_status_success(
     )
     order = await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
         db=db_session,
     )
     assert order.status == OrderStatus.PENDING
@@ -274,7 +274,7 @@ async def test_update_order_status_invalid_transition(
     )
     order = await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
         db=db_session,
     )
     from app.core.errors import InvalidOrderStatusTransitionError
@@ -312,7 +312,7 @@ async def test_update_order_status_idempotent(
     )
     order = await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(shipping_address_id=ship.id, billing_address_id=bill.id),
+        order_address=OrderAddress(shipping_address_id=ship.id, billing_address_id=bill.id),
         db=db_session,
     )
     original_number = order.number
@@ -347,7 +347,7 @@ async def test_checkout_with_addresses_persists_ids(
     )
     order = await OrderService.checkout(
         user.id,
-        order_checkout=OrderCheckout(
+        order_address=OrderAddress(
             shipping_address_id=ship.id,
             billing_address_id=bill.id,
         ),
@@ -401,7 +401,7 @@ async def test_checkout_with_foreign_address_raises(
     with pytest.raises(AddressNotFoundError):
         await OrderService.checkout(
             user1.id,
-            order_checkout=OrderCheckout(
+            order_address=OrderAddress(
                 shipping_address_id=foreign_addr.id,
                 billing_address_id=billing_addr.id,
             ),
@@ -425,12 +425,12 @@ async def test_checkout_missing_addresses_error(db_session: AsyncSession, produc
     await CartService.add_item_to_user_cart(
         user.id, CartItemCreate(product_id=prod.id, quantity=1), db_session
     )
-    order_checkout = OrderCheckout(
+    order_address = OrderAddress(
         shipping_address_id=uuid.uuid4(),
         billing_address_id=uuid.uuid4(),
     )
     with pytest.raises(AddressNotFoundError):
-        await OrderService.checkout(user.id, order_checkout, db_session)
+        await OrderService.checkout(user.id, order_address, db_session)
 
 
 @pytest.mark.asyncio

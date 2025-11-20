@@ -13,7 +13,7 @@ from app.core.errors import (
 )
 from app.models.order import Order, OrderItem
 from app.models.product import Product
-from app.schemas.order import OrderCheckout
+from app.schemas.order import OrderAddress
 from app.services.address_service import AddressService
 from app.services.cart_service import CartService
 
@@ -40,7 +40,7 @@ class OrderService:
     @staticmethod
     async def checkout(
         user_id: UUID,
-        order_checkout: OrderCheckout,
+        order_address: OrderAddress,
         db: AsyncSession,
     ) -> Order:
         """Checkout the user's cart and create an order.
@@ -48,7 +48,7 @@ class OrderService:
         Args:
             user_id (UUID): The ID of the user.
             db (AsyncSession): The database session.
-            order_checkout (OrderCheckout): The checkout data including shipping and billing address IDs.
+            order_address (OrderAddress): Shipping and billing address IDs required for checkout.
 
         Raises:
             EmptyCartError: If the user's cart is empty.
@@ -81,8 +81,8 @@ class OrderService:
             if not p or it.quantity > p.stock:
                 raise InsufficientStockError()
 
-        shipping_addr = await AddressService.get(db, order_checkout.shipping_address_id, user_id)
-        billing_addr = await AddressService.get(db, order_checkout.billing_address_id, user_id)
+        shipping_addr = await AddressService.get(db, order_address.shipping_address_id, user_id)
+        billing_addr = await AddressService.get(db, order_address.billing_address_id, user_id)
 
         # 5) Create order + items, decrement stock (single transaction)
         order = Order(
