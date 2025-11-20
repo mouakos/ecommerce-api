@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import OrderStatus
 from app.core.errors import (
     EmptyCartError,
     InsufficientStockError,
@@ -127,4 +128,31 @@ class OrderService:
         order = (await db.exec(stmt)).first()
         if not order:
             raise OrderNotFoundError()
+        return order
+
+    @staticmethod
+    async def update_order_status(
+        order_id: UUID, new_status: OrderStatus, db: AsyncSession
+    ) -> Order:
+        """Update the status of an order.
+
+        Args:
+            order_id (UUID): The ID of the order.
+            new_status (OrderStatus): The new status to set.
+            db (AsyncSession): The database session.
+
+        Raises:
+            OrderNotFoundError: If the order does not exist.
+
+        Returns:
+            Order: The updated order.
+        """
+        stmt = select(Order).where(Order.id == order_id)
+        order = (await db.exec(stmt)).first()
+        if not order:
+            raise OrderNotFoundError()
+        order.status = new_status
+        db.add(order)
+        await db.flush()
+        await db.refresh(order)
         return order

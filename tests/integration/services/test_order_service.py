@@ -1,12 +1,13 @@
 """Unit tests for OrderService logic.
 
 Cover checkout success, empty cart, insufficient stock, list orders, get specific order,
-and order not found. Focus on transactional stock decrement and cart deletion.
+order not found, and status update. Focus on transactional stock decrement and cart deletion.
 """
 
 import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import OrderStatus
 from app.core.errors import EmptyCartError, InsufficientStockError, OrderNotFoundError
 from app.core.security import get_password_hash
 from app.models.product import Product
@@ -141,3 +142,32 @@ async def test_get_user_order_not_found(db_session: AsyncSession):
 
     with pytest.raises(OrderNotFoundError):
         await OrderService.get_user_order(user.id, uuid.uuid4(), db_session)
+
+
+@pytest.mark.asyncio
+async def test_update_order_status_success(db_session: AsyncSession, product_factory):
+    """Update an order's status successfully."""
+    user = User(
+        email="statussucc@example.com",
+        hashed_password=get_password_hash("Pass123"),
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    prod = await product_factory("StatusItem", price=12.0, stock=5)
+    await CartService.add_item_to_user_cart(
+        user.id, CartItemCreate(product_id=prod.id, quantity=2), db_session
+    )
+    order = await OrderService.checkout(user.id, db_session)
+    assert order.status == OrderStatus.PENDING
+    updated = await OrderService.update_order_status(order.id, OrderStatus.PROCESSING, db_session)
+    assert updated.status == OrderStatus.PROCESSING
+
+
+@pytest.mark.asyncio
+async def test_update_order_status_not_found(db_session: AsyncSession):
+    """Updating a non-existent order status should raise OrderNotFoundError."""
+    import uuid
+
+    with pytest.raises(OrderNotFoundError):
+        await OrderService.update_order_status(uuid.uuid4(), OrderStatus.SHIPPED, db_session)

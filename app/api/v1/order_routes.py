@@ -8,13 +8,15 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.api.deps import get_current_user
+from app.api.deps import RoleChecker, get_current_user
+from app.core.enums import UserRole
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.order import OrderRead
+from app.schemas.order import OrderRead, OrderStatusUpdate
 from app.services.order_service import OrderService
 
 router = APIRouter(prefix="/api/v1/orders", tags=["Orders"])
+role_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 
 @router.post("/", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
@@ -43,3 +45,13 @@ async def get_my_order(
 ) -> OrderRead:
     """Get a specific order for the current user by order ID."""
     return await OrderService.get_user_order(current_user.id, order_id, db)
+
+
+@router.patch("/{order_id}/status", response_model=OrderRead, dependencies=[role_checker])
+async def update_order_status(
+    order_id: UUID,
+    order_status_update: OrderStatusUpdate,
+    db: Annotated[AsyncSession, Depends(get_session)],
+) -> OrderRead:
+    """Update the status of an order."""
+    return await OrderService.update_order_status(order_id, order_status_update.status, db)
