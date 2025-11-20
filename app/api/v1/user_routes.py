@@ -105,7 +105,6 @@ async def delete_user(
 ) -> None:
     """Delete a user (admin only). Returns 204 on success."""
     await UserService.delete(db, user_id)
-    # FastAPI will emit 204 with empty body
 
 
 @router.get("/{user_id}/addresses", response_model=Page[AddressRead], dependencies=[role_checker])

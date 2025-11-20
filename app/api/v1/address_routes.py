@@ -1,5 +1,7 @@
 """API routes for managing user addresses."""
 
+# mypy: disable-error-code=return-value
+
 from typing import Annotated
 from uuid import UUID
 
@@ -36,8 +38,7 @@ async def create_address(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> AddressRead:
     """Create a new address for current user."""
-    addr = await AddressService.create(db, current_user.id, payload)
-    return AddressRead.model_validate(addr, from_attributes=True)
+    return await AddressService.create(db, current_user.id, payload)
 
 
 @router.get("/{address_id}", response_model=AddressRead)
@@ -47,8 +48,7 @@ async def get_address(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> AddressRead:
     """Get an address owned by current user."""
-    addr = await AddressService.get(db, address_id, current_user.id)
-    return AddressRead.model_validate(addr, from_attributes=True)
+    return await AddressService.get(db, address_id, current_user.id)
 
 
 @router.patch("/{address_id}", response_model=AddressRead)
@@ -59,8 +59,7 @@ async def update_address(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> AddressRead:
     """Update an address owned by current user."""
-    addr = await AddressService.update(db, address_id, current_user.id, payload)
-    return AddressRead.model_validate(addr, from_attributes=True)
+    return await AddressService.update(db, address_id, current_user.id, payload)
 
 
 @router.delete("/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -91,8 +90,4 @@ async def set_default_billing_address(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> AddressRead:
     """Set default billing address."""
-    addr = await AddressService.set_default_billing(db, address_id, current_user.id)
-    return AddressRead.model_validate(addr, from_attributes=True)
-
-
-#
+    return await AddressService.set_default_billing(db, address_id, current_user.id)

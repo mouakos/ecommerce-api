@@ -1,8 +1,8 @@
 """init db
 
-Revision ID: d234a67acf22
+Revision ID: f62339b118bb
 Revises: 
-Create Date: 2025-11-19 01:30:57.547307
+Create Date: 2025-11-20 19:15:33.155964
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'd234a67acf22'
+revision: str = 'f62339b118bb'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -38,6 +38,9 @@ def upgrade() -> None:
     sa.Column('is_active', sa.Boolean(), nullable=False),
     sa.Column('is_verified', sa.Boolean(), nullable=False),
     sa.Column('role', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('first_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('last_name', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('phone_number', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )

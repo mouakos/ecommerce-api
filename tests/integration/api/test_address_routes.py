@@ -14,7 +14,7 @@ BASE = "/api/v1/addresses"
 async def test_create_first_address_sets_defaults(auth_client: AsyncClient):
     # current user is from auth_client fixture (already verified). Create first address.
     payload = {
-        "line1": "123 Main St",
+        "street": "123 Main St",
         "city": "Paris",
         "postal_code": "75001",
         "country": "fr",
@@ -31,14 +31,14 @@ async def test_create_second_address_switch_default_shipping(auth_client: AsyncC
     # First address
     r1 = await auth_client.post(
         BASE + "/",
-        json={"line1": "1 First Ave", "city": "Paris", "postal_code": "75001", "country": "fr"},
+        json={"street": "1 First Ave", "city": "Paris", "postal_code": "75001", "country": "fr"},
     )
     assert r1.status_code == 201
     # Second address with explicit flag
     r2 = await auth_client.post(
         BASE + "/",
         json={
-            "line1": "2 Second Ave",
+            "street": "2 Second Ave",
             "city": "Paris",
             "postal_code": "75002",
             "country": "fr",
@@ -82,7 +82,7 @@ async def test_address_ownership_enforced(
     # user in auth_client creates address
     r_create = await auth_client.post(
         BASE + "/",
-        json={"line1": "9 Secret St", "city": "Lyon", "postal_code": "69000", "country": "fr"},
+        json={"street": "9 Secret St", "city": "Lyon", "postal_code": "69000", "country": "fr"},
     )
     addr_id = r_create.json()["id"]
 

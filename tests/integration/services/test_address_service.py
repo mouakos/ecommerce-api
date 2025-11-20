@@ -20,8 +20,7 @@ from app.services.address_service import AddressService
 
 def _payload(label: str) -> AddressCreate:
     return AddressCreate(
-        label=label,
-        line1=f"{label} line1",
+        street=f"{label} Street",
         city="City",
         postal_code="12345",
         country="us",
