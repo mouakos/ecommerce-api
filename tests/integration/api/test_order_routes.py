@@ -30,7 +30,7 @@ async def test_checkout_decrements_stock_and_clears_cart(auth_client: AsyncClien
     cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=10.0)
     CartFactory(user_id=user_id, items=[cart_item])
 
-    r = await auth_client.post(f"{ORD}/")
+    r = await auth_client.post(f"{ORD}/", json={})
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["total_amount"] == 20.0
@@ -47,7 +47,7 @@ async def test_checkout_empty_cart_400(auth_client: AsyncClient, db_session):
     CartFactory(user_id=user_id)
     await db_session.flush()
 
-    r = await auth_client.post(f"{ORD}/")
+    r = await auth_client.post(f"{ORD}/", json={})
     assert r.status_code == 400
     assert r.json()["detail"] == "Cart is empty."
 
@@ -59,7 +59,7 @@ async def test_list_and_get_my_orders(auth_client: AsyncClient, db_session):
     user_id = get_user_id_from_token(auth_client)
     cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=10.0)
     CartFactory(user_id=user_id, items=[cart_item])
-    created = (await auth_client.post(f"{ORD}/")).json()
+    created = (await auth_client.post(f"{ORD}/", json={})).json()
 
     # list
     r_list = await auth_client.get(f"{ORD}/")
@@ -82,7 +82,7 @@ async def test_admin_updates_order_status_success(
     user_id = get_user_id_from_token(auth_client)
     cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=5.0)
     CartFactory(user_id=user_id, items=[cart_item])
-    created = (await auth_client.post(f"{ORD}/")).json()
+    created = (await auth_client.post(f"{ORD}/", json={})).json()
     order_id = created["id"]
     assert created["status"] == "pending"
     r_patch = await auth_admin_client.patch(
@@ -100,7 +100,7 @@ async def test_user_cannot_update_order_status_forbidden(auth_client: AsyncClien
     user_id = get_user_id_from_token(auth_client)
     cart_item = CartItemFactory.build(product=product, quantity=1, unit_price=3.5)
     CartFactory(user_id=user_id, items=[cart_item])
-    created = (await auth_client.post(f"{ORD}/")).json()
+    created = (await auth_client.post(f"{ORD}/", json={})).json()
     order_id = created["id"]
     r_forbidden = await auth_client.patch(f"{ORD}/{order_id}/status", json={"status": "processing"})
     assert r_forbidden.status_code == 403
@@ -137,12 +137,68 @@ async def test_admin_update_order_status_invalid_transition(
     user_id = get_user_id_from_token(auth_client)
     cart_item = CartItemFactory.build(product=product, quantity=1, unit_price=11.0)
     CartFactory(user_id=user_id, items=[cart_item])
-    created = (await auth_client.post(f"{ORD}/")).json()
+    created = (await auth_client.post(f"{ORD}/", json={})).json()
     order_id = created["id"]
-    # Invalid direct jump from pending -> delivered
     r_invalid = await auth_admin_client.patch(
         f"{ORD}/{order_id}/status", json={"status": "delivered"}
     )
     assert r_invalid.status_code == 400
     body = r_invalid.json()
     assert body["error_code"] == "invalid_order_status_transition"
+
+
+@pytest.mark.asyncio
+async def test_checkout_with_addresses(auth_client: AsyncClient, db_session, address_factory):
+    """Checkout with provided shipping & billing address IDs persists them."""
+    product = ProductFactory(stock=6, price=9.0)
+    await db_session.flush()
+    user_id = get_user_id_from_token(auth_client)
+    cart_item = CartItemFactory.build(product=product, quantity=2, unit_price=9.0)
+    CartFactory(user_id=user_id, items=[cart_item])
+    ship = await address_factory(
+        user_id, street="10 Ship Way", city="Paris", postal_code="75010", country="fr"
+    )
+    bill = await address_factory(
+        user_id, street="20 Bill Way", city="Paris", postal_code="75020", country="fr"
+    )
+    r = await auth_client.post(
+        f"{ORD}/",
+        json={"shipping_address_id": str(ship.id), "billing_address_id": str(bill.id)},
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["shipping_address_id"] == str(ship.id)
+    assert body["billing_address_id"] == str(bill.id)
+
+
+@pytest.mark.asyncio
+async def test_checkout_with_foreign_address_forbidden(
+    auth_client: AsyncClient, db_session, address_factory
+):
+    """Checkout using address owned by another user should 404 with address_not_found."""
+    # create another user & address via direct factory pattern
+    from app.core.security import get_password_hash
+    from app.models.user import User
+
+    other = User(
+        email="otheraddr@example.com",
+        hashed_password=get_password_hash("OtherPass1"),
+        is_verified=True,
+    )
+    db_session.add(other)
+    await db_session.flush()
+    foreign_addr = await address_factory(
+        other.id, street="Foreign Addr", city="Paris", postal_code="75030", country="fr"
+    )
+    product = ProductFactory(stock=4, price=7.5)
+    await db_session.flush()
+    user_id = get_user_id_from_token(auth_client)
+    cart_item = CartItemFactory.build(product=product, quantity=1, unit_price=7.5)
+    CartFactory(user_id=user_id, items=[cart_item])
+    r = await auth_client.post(
+        f"{ORD}/",
+        json={"shipping_address_id": str(foreign_addr.id)},
+    )
+    assert r.status_code == 404
+    body = r.json()
+    assert body["error_code"] == "address_not_found"

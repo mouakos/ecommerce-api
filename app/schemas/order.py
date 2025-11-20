@@ -23,9 +23,18 @@ class OrderRead(UUIDMixin, TimestampMixin):
     status: OrderStatus
     items: list[OrderItemRead]
     total_amount: float
+    shipping_address_id: UUID | None = None
+    billing_address_id: UUID | None = None
 
 
 class OrderStatusUpdate(BaseModel):
     """Schema for updating order status."""
 
     status: OrderStatus
+
+
+class OrderCheckout(BaseModel):
+    """Schema for initiating a checkout with optional address references."""
+
+    shipping_address_id: UUID | None = None
+    billing_address_id: UUID | None = None

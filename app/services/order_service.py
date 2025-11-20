@@ -6,11 +6,8 @@ from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.enums import OrderStatus
-from app.core.errors import (
-    EmptyCartError,
-    InsufficientStockError,
-    OrderNotFoundError,
-)
+from app.core.errors import EmptyCartError, InsufficientStockError, OrderNotFoundError
+from app.models.address import Address
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.services.cart_service import CartService
@@ -36,12 +33,20 @@ class OrderService:
     }
 
     @staticmethod
-    async def checkout(user_id: UUID, db: AsyncSession) -> Order:
+    async def checkout(
+        user_id: UUID,
+        db: AsyncSession,
+        *,
+        shipping_address_id: UUID | None = None,
+        billing_address_id: UUID | None = None,
+    ) -> Order:
         """Checkout the user's cart and create an order.
 
         Args:
             user_id (UUID): The ID of the user.
             db (AsyncSession): The database session.
+            shipping_address_id (UUID | None): Optional shipping address UUID.
+            billing_address_id (UUID | None): Optional billing address UUID.
 
         Raises:
             EmptyCartError: If the user's cart is empty.
@@ -73,9 +78,29 @@ class OrderService:
             if not p or it.quantity > p.stock:
                 raise InsufficientStockError()
 
-        # 4) Create order + items, decrement stock (single transaction)
+        # 4) Validate address ownership (if provided)
+        async def _load_address(addr_id: UUID | None) -> Address | None:
+            return None if not addr_id else await db.get(Address, addr_id)
+
+        shipping_addr = await _load_address(shipping_address_id)
+        if shipping_address_id and (not shipping_addr or shipping_addr.user_id != user_id):
+            from app.core.errors import AddressNotFoundError
+
+            raise AddressNotFoundError()
+
+        billing_addr = await _load_address(billing_address_id)
+        if billing_address_id and (not billing_addr or billing_addr.user_id != user_id):
+            from app.core.errors import AddressNotFoundError
+
+            raise AddressNotFoundError()
+
+        # 5) Create order + items, decrement stock (single transaction)
         order = Order(
-            user_id=user_id, number="temp", total_amount=0
+            user_id=user_id,
+            number="temp",
+            total_amount=0,
+            shipping_address_id=shipping_address_id,
+            billing_address_id=billing_address_id,
         )  # temp; update after id assigned
         db.add(order)
         await db.flush()  # get order.id

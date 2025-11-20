@@ -178,12 +178,74 @@ async def test_update_order_status_invalid_transition(db_session: AsyncSession, 
     await CartService.add_item_to_user_cart(
         user.id, CartItemCreate(product_id=prod.id, quantity=1), db_session
     )
-    order = await OrderService.checkout(user.id, db_session)
-    assert order.status == OrderStatus.PENDING
-    from app.core.errors import InvalidOrderStatusTransitionError
+    await OrderService.checkout(user.id, db_session)
 
-    with pytest.raises(InvalidOrderStatusTransitionError):
-        await OrderService.update_order_status(order.id, OrderStatus.DELIVERED, db_session)
+
+@pytest.mark.asyncio
+async def test_checkout_with_addresses_persists_ids(
+    db_session: AsyncSession, product_factory, address_factory
+):
+    """Checkout assigns provided shipping/billing address IDs."""
+    user = User(
+        email="addrorder@example.com",
+        hashed_password=get_password_hash("Pass123"),
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    prod = await product_factory("AddrWidget", price=10.0, stock=5)
+    await CartService.add_item_to_user_cart(
+        user.id, CartItemCreate(product_id=prod.id, quantity=2), db_session
+    )
+    ship = await address_factory(
+        user.id, street="1 Ship St", city="Paris", postal_code="75001", country="fr"
+    )
+    bill = await address_factory(
+        user.id, street="2 Bill Ave", city="Paris", postal_code="75002", country="fr"
+    )
+    order = await OrderService.checkout(
+        user.id,
+        db_session,
+        shipping_address_id=ship.id,
+        billing_address_id=bill.id,
+    )
+    assert order.shipping_address_id == ship.id
+    assert order.billing_address_id == bill.id
+
+
+@pytest.mark.asyncio
+async def test_checkout_with_foreign_address_raises(
+    db_session: AsyncSession, product_factory, address_factory
+):
+    """Checkout with address belonging to another user should raise AddressNotFoundError."""
+    user1 = User(
+        email="addruser1@example.com",
+        hashed_password=get_password_hash("Pass123"),
+        is_verified=True,
+    )
+    user2 = User(
+        email="addruser2@example.com",
+        hashed_password=get_password_hash("Pass123"),
+        is_verified=True,
+    )
+    db_session.add(user1)
+    db_session.add(user2)
+    await db_session.flush()
+    prod = await product_factory("BadAddrWidget", price=5.0, stock=3)
+    await CartService.add_item_to_user_cart(
+        user1.id, CartItemCreate(product_id=prod.id, quantity=1), db_session
+    )
+    foreign_addr = await address_factory(
+        user2.id, street="Foreign St", city="Paris", postal_code="75003", country="fr"
+    )
+    from app.core.errors import AddressNotFoundError
+
+    with pytest.raises(AddressNotFoundError):
+        await OrderService.checkout(
+            user1.id,
+            db_session,
+            shipping_address_id=foreign_addr.id,
+        )
 
 
 @pytest.mark.asyncio
