@@ -226,3 +226,27 @@ async def test_delete_user_forbidden_non_admin(auth_client: AsyncClient, db_sess
     assert r_del.status_code == 403
     body = r_del.json()
     assert body["error_code"] == "insufficient_permissions"
+
+
+@pytest.mark.asyncio
+async def test_admin_list_user_addresses(auth_admin_client: AsyncClient, auth_client: AsyncClient):
+    # create some addresses under normal user
+    for i in range(2):
+        r = await auth_client.post(
+            "/api/v1/addresses/",
+            json={
+                "line1": f"{i} AdminView Rd",
+                "city": "Paris",
+                "postal_code": f"7500{i}",
+                "country": "fr",
+            },
+        )
+        assert r.status_code == 201
+
+    r_me = await auth_client.get("/api/v1/users/me")
+    user_id = r_me.json()["id"]
+    r_admin_list = await auth_admin_client.get(f"/api/v1/users/{user_id}/addresses")
+    assert r_admin_list.status_code == 200
+    body = r_admin_list.json()
+    assert body["total"] >= 2
+    assert all("line1" in itm for itm in body["items"])

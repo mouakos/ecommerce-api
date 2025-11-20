@@ -92,29 +92,3 @@ async def test_address_ownership_enforced(
     )
     assert r_get.status_code == 404
     assert r_get.json()["error_code"] == "address_not_found"
-
-
-@pytest.mark.asyncio
-async def test_admin_list_user_addresses(auth_admin_client: AsyncClient, auth_client: AsyncClient):
-    # create some addresses under normal user
-    for i in range(2):
-        r = await auth_client.post(
-            BASE + "/",
-            json={
-                "line1": f"{i} AdminView Rd",
-                "city": "Paris",
-                "postal_code": "7500{i}",
-                "country": "fr",
-            },
-        )
-        assert r.status_code == 201
-
-    # List as admin via /api/v1/users/{id}/addresses
-    # Need user id: fetch /users/me
-    r_me = await auth_client.get("/api/v1/users/me")
-    user_id = r_me.json()["id"]
-    r_admin_list = await auth_admin_client.get(f"/api/v1/users/{user_id}/addresses")
-    assert r_admin_list.status_code == 200
-    body = r_admin_list.json()
-    assert body["total"] >= 2
-    assert all("line1" in itm for itm in body["items"])

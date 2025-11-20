@@ -137,3 +137,9 @@ class PasswordMismatchError(EcomError):
     """The provided passwords do not match."""
 
     pass
+
+
+class AddressNotFoundError(EcomError):
+    """Address not found."""
+
+    pass
