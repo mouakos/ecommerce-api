@@ -17,6 +17,7 @@ from app.core.errors import (
     InsufficientStockError,
     InvalidCredentialsError,
     InvalidEmailTokenError,
+    InvalidOrderStatusTransitionError,
     InvalidTokenError,
     OrderNotFoundError,
     PasswordMismatchError,
@@ -185,6 +186,19 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=status.HTTP_404_NOT_FOUND,
             content={"detail": "Order not found.", "error_code": "order_not_found"},
+        )
+
+    @app.exception_handler(InvalidOrderStatusTransitionError)
+    async def handle_invalid_order_status_transition_error(
+        _: Request, _exc: InvalidOrderStatusTransitionError
+    ) -> JSONResponse:
+        """Handle invalid order status transition errors."""
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "detail": "Invalid order status transition.",
+                "error_code": "invalid_order_status_transition",
+            },
         )
 
     @app.exception_handler(InsufficientStockError)

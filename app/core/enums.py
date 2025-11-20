@@ -20,4 +20,3 @@ class OrderStatus(StrEnum):
     CANCELED = "canceled"
     RETURNED = "returned"
     REFUNDED = "refunded"
-    CREATED = "created"

@@ -125,3 +125,24 @@ async def test_admin_update_order_status_validation_error(auth_admin_client: Asy
     assert r.status_code == 422
     # Pydantic validation returns detail list
     assert "detail" in r.json()
+
+
+@pytest.mark.asyncio
+async def test_admin_update_order_status_invalid_transition(
+    auth_admin_client: AsyncClient, auth_client: AsyncClient, db_session
+):
+    """Admin attempting invalid transition (pending -> delivered) gets 400 invalid_order_status_transition."""
+    product = ProductFactory(stock=3, price=11.0)
+    await db_session.flush()
+    user_id = get_user_id_from_token(auth_client)
+    cart_item = CartItemFactory.build(product=product, quantity=1, unit_price=11.0)
+    CartFactory(user_id=user_id, items=[cart_item])
+    created = (await auth_client.post(f"{ORD}/")).json()
+    order_id = created["id"]
+    # Invalid direct jump from pending -> delivered
+    r_invalid = await auth_admin_client.patch(
+        f"{ORD}/{order_id}/status", json={"status": "delivered"}
+    )
+    assert r_invalid.status_code == 400
+    body = r_invalid.json()
+    assert body["error_code"] == "invalid_order_status_transition"

@@ -23,6 +23,18 @@ def _order_number(order_id: UUID) -> str:
 class OrderService:
     """Service for managing orders."""
 
+    # Allowed status transitions (source -> set of permitted next statuses)
+    _ALLOWED_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
+        OrderStatus.PENDING: {OrderStatus.PROCESSING, OrderStatus.CANCELED},
+        OrderStatus.PROCESSING: {OrderStatus.SHIPPED, OrderStatus.CANCELED},
+        OrderStatus.SHIPPED: {OrderStatus.DELIVERED, OrderStatus.RETURNED},
+        OrderStatus.DELIVERED: {OrderStatus.RETURNED, OrderStatus.REFUNDED},
+        OrderStatus.RETURNED: {OrderStatus.REFUNDED},
+        # Terminal states (no further transitions)
+        OrderStatus.CANCELED: set(),
+        OrderStatus.REFUNDED: set(),
+    }
+
     @staticmethod
     async def checkout(user_id: UUID, db: AsyncSession) -> Order:
         """Checkout the user's cart and create an order.
@@ -134,7 +146,7 @@ class OrderService:
     async def update_order_status(
         order_id: UUID, new_status: OrderStatus, db: AsyncSession
     ) -> Order:
-        """Update the status of an order.
+        """Update the status of an order enforcing allowed transitions.
 
         Args:
             order_id (UUID): The ID of the order.
@@ -151,6 +163,16 @@ class OrderService:
         order = (await db.exec(stmt)).first()
         if not order:
             raise OrderNotFoundError()
+
+        current = order.status
+        allowed = OrderService._ALLOWED_TRANSITIONS.get(current, set())
+        # If trying to set same status, just return (idempotent)
+        if new_status == current:
+            return order
+        if new_status not in allowed:
+            from app.core.errors import InvalidOrderStatusTransitionError
+
+            raise InvalidOrderStatusTransitionError()
         order.status = new_status
         db.add(order)
         await db.flush()

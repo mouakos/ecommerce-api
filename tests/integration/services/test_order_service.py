@@ -165,6 +165,28 @@ async def test_update_order_status_success(db_session: AsyncSession, product_fac
 
 
 @pytest.mark.asyncio
+async def test_update_order_status_invalid_transition(db_session: AsyncSession, product_factory):
+    """Attempt an invalid transition (e.g., PENDING -> DELIVERED) should raise error."""
+    user = User(
+        email="statusbad@example.com",
+        hashed_password=get_password_hash("Pass123"),
+        is_verified=True,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    prod = await product_factory("BadStatusItem", price=5.0, stock=2)
+    await CartService.add_item_to_user_cart(
+        user.id, CartItemCreate(product_id=prod.id, quantity=1), db_session
+    )
+    order = await OrderService.checkout(user.id, db_session)
+    assert order.status == OrderStatus.PENDING
+    from app.core.errors import InvalidOrderStatusTransitionError
+
+    with pytest.raises(InvalidOrderStatusTransitionError):
+        await OrderService.update_order_status(order.id, OrderStatus.DELIVERED, db_session)
+
+
+@pytest.mark.asyncio
 async def test_update_order_status_not_found(db_session: AsyncSession):
     """Updating a non-existent order status should raise OrderNotFoundError."""
     import uuid

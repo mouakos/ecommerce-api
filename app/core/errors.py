@@ -85,6 +85,12 @@ class OrderNotFoundError(EcomError):
     pass
 
 
+class InvalidOrderStatusTransitionError(EcomError):
+    """Invalid status transition attempted for an order."""
+
+    pass
+
+
 class InsufficientStockError(EcomError):
     """Not enough stock for the requested product."""
 
