@@ -18,3 +18,6 @@ class OrderStatus(StrEnum):
     SHIPPED = "shipped"
     DELIVERED = "delivered"
     CANCELED = "canceled"
+    RETURNED = "returned"
+    REFUNDED = "refunded"
+    CREATED = "created"

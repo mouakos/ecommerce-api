@@ -2,6 +2,7 @@
 
 from uuid import UUID
 
+from app.core.enums import OrderStatus
 from app.schemas.base import TimestampMixin, UUIDMixin
 
 
@@ -17,6 +18,6 @@ class OrderRead(UUIDMixin, TimestampMixin):
     """Schema for reading order information."""
 
     number: str
-    status: str
+    status: OrderStatus
     items: list[OrderItemRead]
     total_amount: float
