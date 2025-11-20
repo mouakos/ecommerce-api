@@ -23,12 +23,8 @@ class Order(UUIDMixin, TimestampMixin, table=True):
     user_id: UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
     number: str = Field(index=True, unique=True)
     status: OrderStatus = Field(default=OrderStatus.PENDING)
-    shipping_address_id: UUID | None = Field(
-        default=None, foreign_key="addresses.id", index=True, ondelete="SET NULL"
-    )
-    billing_address_id: UUID | None = Field(
-        default=None, foreign_key="addresses.id", index=True, ondelete="SET NULL"
-    )
+    shipping_address_id: UUID = Field(foreign_key="addresses.id", index=True)
+    billing_address_id: UUID = Field(foreign_key="addresses.id", index=True)
     total_amount: float
     updated_at: datetime = Field(
         default_factory=utcnow,

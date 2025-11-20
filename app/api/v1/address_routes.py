@@ -72,23 +72,3 @@ async def delete_address(
     """Delete an address owned by current user (204)."""
     await AddressService.delete(db, address_id, current_user.id)
 
-
-@router.post("/{address_id}/default/shipping", response_model=AddressRead)
-async def set_default_shipping_address(
-    address_id: UUID,
-    db: Annotated[AsyncSession, Depends(get_session)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> AddressRead:
-    """Set default shipping address."""
-    addr = await AddressService.set_default_shipping(db, address_id, current_user.id)
-    return AddressRead.model_validate(addr, from_attributes=True)
-
-
-@router.post("/{address_id}/default/billing", response_model=AddressRead)
-async def set_default_billing_address(
-    address_id: UUID,
-    db: Annotated[AsyncSession, Depends(get_session)],
-    current_user: Annotated[User, Depends(get_current_user)],
-) -> AddressRead:
-    """Set default billing address."""
-    return await AddressService.set_default_billing(db, address_id, current_user.id)

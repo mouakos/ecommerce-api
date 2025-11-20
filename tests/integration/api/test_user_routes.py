@@ -236,8 +236,9 @@ async def test_admin_list_user_addresses(auth_admin_client: AsyncClient, auth_cl
         r = await auth_client.post(
             "/api/v1/addresses/",
             json={
-                "street": f"{i} AdminView Rd",
+                "line1": f"{i} AdminView Rd",
                 "city": "Paris",
+                "state": "FR-IDF",
                 "postal_code": f"7500{i}",
                 "country": "fr",
             },
@@ -250,4 +251,4 @@ async def test_admin_list_user_addresses(auth_admin_client: AsyncClient, auth_cl
     assert r_admin_list.status_code == 200
     body = r_admin_list.json()
     assert body["total"] >= 2
-    assert all("street" in itm for itm in body["items"])
+    assert all("line1" in itm for itm in body["items"])

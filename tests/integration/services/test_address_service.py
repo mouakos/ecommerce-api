@@ -1,13 +1,11 @@
-"""Unit tests for AddressService.
+"""Unit tests for AddressService (defaults removed).
 
-Cover:
- - First address auto defaults (shipping & billing)
- - Explicit shipping default switch on second create
- - Setting billing default via service method
- - Updating an address to become default shipping
+Cover now:
+ - Basic create
+ - Update fields
  - Ownership enforcement (wrong user id raises AddressNotFoundError)
- - Delete lifecycle (delete then not found on get & second delete raises)
- - Pagination basics (limit/offset & total count)
+ - Delete lifecycle
+ - Pagination basics
 """
 
 import pytest
@@ -20,68 +18,43 @@ from app.services.address_service import AddressService
 
 def _payload(label: str) -> AddressCreate:
     return AddressCreate(
-        street=f"{label} Street",
+        line1=f"{label} Street",
         city="City",
+        state="ST",
         postal_code="12345",
         country="us",
     )
 
 
 @pytest.mark.asyncio
-async def test_create_first_address_sets_defaults(db_session: AsyncSession, user_factory):
+async def test_create_address(db_session: AsyncSession, user_factory):
     user = await user_factory("addr-first@example.com")
     addr = await AddressService.create(db_session, user.id, _payload("Home"))
-    assert addr.is_default_shipping is True
-    assert addr.is_default_billing is True
+    assert addr.line1.startswith("Home")
 
 
 @pytest.mark.asyncio
-async def test_create_second_address_explicit_shipping_default_switches(
-    db_session: AsyncSession, user_factory
-):
-    user = await user_factory("addr-second@example.com")
-    first = await AddressService.create(db_session, user.id, _payload("Primary"))
-    second_payload = _payload("Secondary")
-    second_payload.set_default_shipping = True
-    second = await AddressService.create(db_session, user.id, second_payload)
-    # Reload via list
+async def test_update_address(db_session: AsyncSession, user_factory):
+    user = await user_factory("addr-update@example.com")
+    addr = await AddressService.create(db_session, user.id, _payload("Primary"))
+    updated = await AddressService.update(
+        db_session, addr.id, user.id, AddressUpdate(line1="New Primary St")
+    )
+    assert updated.line1 == "New Primary St"
+
+
+@pytest.mark.asyncio
+async def test_list_addresses(db_session: AsyncSession, user_factory):
+    user = await user_factory("addr-list@example.com")
+    for i in range(2):
+        await AddressService.create(db_session, user.id, _payload(f"L{i}"))
     items, total = await AddressService.list(db_session, user.id)
     assert total == 2
-    shipping_defaults = [a.id for a in items if a.is_default_shipping]
-    assert shipping_defaults == [second.id]
-    assert first.is_default_billing is True  # billing default remains on first
-    assert second.is_default_billing is False
+    assert all(a.line1.endswith("Street") for a in items)
 
 
 @pytest.mark.asyncio
-async def test_set_default_billing_switches(db_session: AsyncSession, user_factory):
-    user = await user_factory("addr-billing@example.com")
-    first = await AddressService.create(db_session, user.id, _payload("A1"))
-    second = await AddressService.create(db_session, user.id, _payload("A2"))
-    # make second billing default
-    updated = await AddressService.set_default_billing(db_session, second.id, user.id)
-    assert updated.id == second.id
-    items, _ = await AddressService.list(db_session, user.id)
-    billing_defaults = [a.id for a in items if a.is_default_billing]
-    assert billing_defaults == [second.id]
-    # ensure first lost billing default
-    assert first.id not in billing_defaults
-
-
-@pytest.mark.asyncio
-async def test_update_address_set_default_shipping(db_session: AsyncSession, user_factory):
-    user = await user_factory("addr-update@example.com")
-    first = await AddressService.create(db_session, user.id, _payload("U1"))
-    second = await AddressService.create(db_session, user.id, _payload("U2"))
-    # Make second shipping default via update
-    updated = await AddressService.update(
-        db_session, second.id, user.id, AddressUpdate(set_default_shipping=True)
-    )
-    assert updated.is_default_shipping is True
-    items, _ = await AddressService.list(db_session, user.id)
-    shipping_defaults = [a.id for a in items if a.is_default_shipping]
-    assert shipping_defaults == [second.id]
-    assert first.id not in shipping_defaults
+# (Removed shipping default update test)
 
 
 @pytest.mark.asyncio

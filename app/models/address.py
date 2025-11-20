@@ -21,14 +21,13 @@ class Address(UUIDMixin, TimestampMixin, table=True):
     first_name: str | None = None
     last_name: str | None = None
     company: str | None = None
-    street: str
+    line1: str
+    line2: str | None = None
     city: str
-    state: str | None = None
+    state: str
     postal_code: str
     country: str
     phone_number: str | None = None
-    is_default_shipping: bool = Field(default=False)
-    is_default_billing: bool = Field(default=False)
     updated_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False),

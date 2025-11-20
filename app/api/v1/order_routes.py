@@ -21,16 +21,15 @@ role_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 @router.post("/", response_model=OrderRead, status_code=status.HTTP_201_CREATED)
 async def checkout(
-    payload: OrderCheckout,
+    order_checkout: OrderCheckout,
     db: Annotated[AsyncSession, Depends(get_session)],
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> OrderRead:
-    """Checkout the user's cart and create an order (optionally referencing shipping/billing addresses)."""
+    """Checkout the user's cart and create an order."""
     return await OrderService.checkout(
         current_user.id,
-        db,
-        shipping_address_id=payload.shipping_address_id,
-        billing_address_id=payload.billing_address_id,
+        order_checkout=order_checkout,
+        db=db,
     )
 
 

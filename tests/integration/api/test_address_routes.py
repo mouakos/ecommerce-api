@@ -11,48 +11,41 @@ BASE = "/api/v1/addresses"
 
 
 @pytest.mark.asyncio
-async def test_create_first_address_sets_defaults(auth_client: AsyncClient):
-    # current user is from auth_client fixture (already verified). Create first address.
+async def test_create_address(auth_client: AsyncClient):
+    """Create a single address with new line1/line2 fields."""
     payload = {
-        "street": "123 Main St",
+        "line1": "123 Main St",
         "city": "Paris",
+        "state": "FR-IDF",
         "postal_code": "75001",
         "country": "fr",
     }
     r = await auth_client.post(BASE + "/", json=payload)
     assert r.status_code == 201, r.text
     body = r.json()
-    assert body["is_default_shipping"] is True
-    assert body["is_default_billing"] is True
+    assert body["line1"] == "123 Main St"
+    assert body["city"] == "Paris"
+    assert body["state"] == "FR-IDF"
 
 
 @pytest.mark.asyncio
-async def test_create_second_address_switch_default_shipping(auth_client: AsyncClient):
-    # First address
-    r1 = await auth_client.post(
-        BASE + "/",
-        json={"street": "1 First Ave", "city": "Paris", "postal_code": "75001", "country": "fr"},
-    )
-    assert r1.status_code == 201
-    # Second address with explicit flag
-    r2 = await auth_client.post(
-        BASE + "/",
-        json={
-            "street": "2 Second Ave",
-            "city": "Paris",
-            "postal_code": "75002",
-            "country": "fr",
-            "set_default_shipping": True,
-        },
-    )
-    assert r2.status_code == 201
-    a2 = r2.json()
-    assert a2["is_default_shipping"] is True
-    # list and ensure only second is default shipping
+async def test_list_addresses(auth_client: AsyncClient):
+    """Create two addresses and list them (no defaults)."""
+    for i in range(2):
+        r = await auth_client.post(
+            BASE + "/",
+            json={
+                "line1": f"{i} First Ave",
+                "city": "Paris",
+                "state": "FR-IDF",
+                "postal_code": f"7500{i}",
+                "country": "fr",
+            },
+        )
+        assert r.status_code == 201
     r_list = await auth_client.get(BASE + "/")
     items = r_list.json()["items"]
-    defaults = [i for i in items if i["is_default_shipping"]]
-    assert len(defaults) == 1 and defaults[0]["id"] == a2["id"]
+    assert len(items) >= 2
 
 
 @pytest.mark.asyncio
@@ -82,7 +75,13 @@ async def test_address_ownership_enforced(
     # user in auth_client creates address
     r_create = await auth_client.post(
         BASE + "/",
-        json={"street": "9 Secret St", "city": "Lyon", "postal_code": "69000", "country": "fr"},
+        json={
+            "line1": "9 Secret St",
+            "city": "Lyon",
+            "state": "FR-ARA",
+            "postal_code": "69000",
+            "country": "fr",
+        },
     )
     addr_id = r_create.json()["id"]
 

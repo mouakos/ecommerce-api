@@ -134,36 +134,30 @@ def address_factory(db_session: AsyncSession):
     async def _create(
         user_id: UUID,
         *,
-        street: str = "123 Main St",
+        line1: str = "123 Main St",
+        line2: str | None = None,
         city: str = "City",
+        state: str = "ST",
         postal_code: str = "00000",
         country: str = "us",
         first_name: str | None = None,
         last_name: str | None = None,
         company: str | None = None,
-        state: str | None = None,
         phone_number: str | None = None,
-        is_default_shipping: bool | None = None,
-        is_default_billing: bool | None = None,
     ):
         addr = Address(
             user_id=user_id,
-            street=street,
+            line1=line1,
+            line2=line2,
             city=city,
+            state=state,
             postal_code=postal_code,
             country=country,
             first_name=first_name,
             last_name=last_name,
             company=company,
-            state=state,
             phone_number=phone_number,
         )
-        # Allow overriding defaults explicitly only when provided
-        if is_default_shipping is not None:
-            addr.is_default_shipping = is_default_shipping
-        if is_default_billing is not None:
-            addr.is_default_billing = is_default_billing
-
         db_session.add(addr)
         await db_session.flush()
         await db_session.refresh(addr)
