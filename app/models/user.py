@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional
 
 from sqlmodel import Column, DateTime, Field, Relationship
 
+from app.core.enums import UserRole
 from app.models.base import TimestampMixin, UUIDMixin
 from app.utils.time import utcnow
 
@@ -23,7 +24,7 @@ class User(UUIDMixin, TimestampMixin, table=True):
     hashed_password: str = Field(exclude=True)
     is_active: bool = Field(default=True)
     is_verified: bool = Field(default=False)
-    role: str = Field(default="user")
+    role: UserRole = Field(default=UserRole.USER)
     first_name: str | None = None
     last_name: str | None = None
     phone_number: str | None = None

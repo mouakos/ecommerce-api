@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import RoleChecker, get_current_user
+from app.core.enums import UserRole
 from app.db.session import get_session
 from app.models.user import User
 from app.schemas.address import AddressCreate, AddressRead, AddressUpdate
@@ -16,7 +17,7 @@ from app.schemas.base import Page
 from app.services.address_service import AddressService
 
 router = APIRouter(prefix="/api/v1/addresses", tags=["Addresses"])
-admin_role = Depends(RoleChecker(["admin"]))
+admin_role = Depends(RoleChecker([UserRole.ADMIN]))
 
 
 @router.get("/", response_model=Page[AddressRead])

@@ -4,6 +4,7 @@ import pytest
 from httpx import AsyncClient
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import UserRole
 from app.core.security import get_password_hash
 from app.models.user import User
 
@@ -176,11 +177,10 @@ async def test_admin_set_role(auth_admin_client: AsyncClient, db_session: AsyncS
     await db_session.flush()
     user_id = str(u.id)
 
-    r = await auth_admin_client.post(f"{BASE}/{user_id}/role", json={"role": "manager"})
+    r = await auth_admin_client.post(f"{BASE}/{user_id}/role", json={"role": "admin"})
     assert r.status_code == 200
     await db_session.refresh(u)
-    assert u.role == "manager"
-
+    assert u.role == UserRole.ADMIN
 
 @pytest.mark.asyncio
 async def test_admin_delete_user(auth_admin_client: AsyncClient, db_session: AsyncSession):

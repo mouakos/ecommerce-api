@@ -8,13 +8,14 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker
+from app.core.enums import UserRole
 from app.db.session import get_session
 from app.schemas.base import Page
 from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.services.category_service import CategoryService
 
 router = APIRouter(prefix="/api/v1/categories", tags=["Categories"])
-role_checker = Depends(RoleChecker(["admin"]))
+role_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 
 @router.get("/", response_model=Page[CategoryRead])

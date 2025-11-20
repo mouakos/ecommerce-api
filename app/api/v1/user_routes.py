@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker, get_current_user
+from app.core.enums import UserRole
 from app.db.session import get_session
 from app.models.user import User
 from app.schemas.address import AddressRead
@@ -18,7 +19,7 @@ from app.services.address_service import AddressService
 from app.services.user_service import UserService
 
 router = APIRouter(prefix="/api/v1/users", tags=["Users"])
-role_checker = Depends(RoleChecker(["admin"]))
+role_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 
 @router.get("/", response_model=Page[UserRead], dependencies=[role_checker])

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker
+from app.core.enums import UserRole
 from app.db.session import get_session
 from app.schemas.base import Page
 from app.schemas.product import ProductCreate, ProductRead, ProductReadDetail, ProductUpdate
@@ -16,7 +17,7 @@ from app.services.product_service import ProductService
 from app.services.review_service import ReviewService
 
 router = APIRouter(prefix="/api/v1/products", tags=["Products"])
-role_checker = Depends(RoleChecker(["admin"]))
+role_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 
 @router.get("/", response_model=Page[ProductRead])

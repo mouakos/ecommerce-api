@@ -6,6 +6,7 @@ from uuid import UUID
 from sqlmodel import asc, desc, func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import UserRole
 from app.core.errors import (
     InsufficientPermissionError,
     ReviewNotFoundError,
@@ -140,7 +141,7 @@ class ReviewService:
         review = await db.get(Review, review_id)
         if not review:
             raise ReviewNotFoundError()
-        if review.user_id != user_id and not review.user.role == "admin":
+        if review.user_id != user_id and not review.user.role == UserRole.ADMIN:
             raise InsufficientPermissionError()
 
         for key, value in data.model_dump(exclude_unset=True).items():
@@ -188,7 +189,7 @@ class ReviewService:
         review = await db.get(Review, review_id)
         if not review:
             raise ReviewNotFoundError()
-        if review.user_id != user_id and not review.user.role == "admin":
+        if review.user_id != user_id and not review.user.role == UserRole.ADMIN:
             raise InsufficientPermissionError()
         await db.delete(review)
         await db.flush()

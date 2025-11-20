@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import UserRole
 from app.core.errors import UserNotFoundError
 from app.models.user import User
 from app.schemas.user import UserUpdate
@@ -131,13 +132,13 @@ class UserService:
         await db.flush()
 
     @staticmethod
-    async def set_role(db: AsyncSession, user_id: UUID, role: str) -> None:
+    async def set_role(db: AsyncSession, user_id: UUID, role: UserRole) -> None:
         """Assign a new role to a user (e.g. 'admin', 'user').
 
         Args:
             db (AsyncSession): Database session.
             user_id (UUID): User ID.
-            role (str): New role to assign.
+            role (UserRole): New role to assign.
 
         Raises:
             UserNotFoundError: If the user does not exist.

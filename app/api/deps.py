@@ -8,6 +8,7 @@ from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import UserRole
 from app.core.errors import (
     AccessTokenRequiredError,
     AccountNotVerifiedError,
@@ -110,7 +111,7 @@ async def get_current_user(
 class RoleChecker:
     """Dependency to check if the current user has one of the allowed roles."""
 
-    def __init__(self, allowed_roles: list[str]) -> None:
+    def __init__(self, allowed_roles: list[UserRole]) -> None:
         """Initialize the RoleChecker with allowed roles."""
         self.allowed_roles = allowed_roles
 

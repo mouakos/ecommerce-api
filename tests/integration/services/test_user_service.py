@@ -3,6 +3,7 @@
 import pytest
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import UserRole
 from app.core.errors import UserNotFoundError
 from app.schemas.user import UserCreate, UserUpdate
 from app.services.auth_service import AuthService
@@ -68,6 +69,6 @@ async def test_set_role(db_session: AsyncSession):
     user = await AuthService.create_user(
         db_session, UserCreate(email="role@example.com", password="secret123")
     )
-    await UserService.set_role(db_session, user.id, "admin")
+    await UserService.set_role(db_session, user.id, UserRole.ADMIN)
     changed = await UserService.get(db_session, user.id)
-    assert changed.role == "admin"
+    assert changed.role == UserRole.ADMIN

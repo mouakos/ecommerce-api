@@ -17,6 +17,7 @@ from sqlmodel import SQLModel, create_engine, text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
+from app.core.enums import UserRole
 from app.core.security import get_password_hash
 from app.db.session import get_session
 from app.main import app
@@ -210,7 +211,7 @@ async def auth_client1(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 async def auth_admin_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Authenticated admin HTTP client for tests (JSON login)."""
     admin_user = User(
-        role="admin",
+        role=UserRole.ADMIN,
         email="admin@example.com",
         hashed_password=get_password_hash("admin1"),
         is_verified=True,

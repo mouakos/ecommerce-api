@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.core.enums import UserRole
 from app.schemas.base import TimestampMixin, UUIDMixin
 
 
@@ -41,7 +42,7 @@ class UserUpdate(BaseModel):
 class UserRoleUpdate(BaseModel):
     """Schema for updating a user's role."""
 
-    role: str
+    role: UserRole
 
 
 class Token(BaseModel):
