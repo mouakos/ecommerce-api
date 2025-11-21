@@ -5,6 +5,7 @@ from uuid import UUID
 from sqlmodel import desc, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.enums import OrderStatus
 from app.core.errors import (
     EmptyCartError,
     InsufficientStockError,
@@ -12,6 +13,8 @@ from app.core.errors import (
 )
 from app.models.order import Order, OrderItem
 from app.models.product import Product
+from app.schemas.order import OrderAddress
+from app.services.address_service import AddressService
 from app.services.cart_service import CartService
 
 
@@ -22,17 +25,35 @@ def _order_number(order_id: UUID) -> str:
 class OrderService:
     """Service for managing orders."""
 
+    # Allowed status transitions (source -> set of permitted next statuses)
+    _ALLOWED_TRANSITIONS: dict[OrderStatus, set[OrderStatus]] = {
+        OrderStatus.PENDING: {OrderStatus.PROCESSING, OrderStatus.CANCELED},
+        OrderStatus.PROCESSING: {OrderStatus.SHIPPED, OrderStatus.CANCELED},
+        OrderStatus.SHIPPED: {OrderStatus.DELIVERED, OrderStatus.RETURNED},
+        OrderStatus.DELIVERED: {OrderStatus.RETURNED, OrderStatus.REFUNDED},
+        OrderStatus.RETURNED: {OrderStatus.REFUNDED},
+        # Terminal states (no further transitions)
+        OrderStatus.CANCELED: set(),
+        OrderStatus.REFUNDED: set(),
+    }
+
     @staticmethod
-    async def checkout(user_id: UUID, db: AsyncSession) -> Order:
+    async def checkout(
+        user_id: UUID,
+        order_address: OrderAddress,
+        db: AsyncSession,
+    ) -> Order:
         """Checkout the user's cart and create an order.
 
         Args:
             user_id (UUID): The ID of the user.
             db (AsyncSession): The database session.
+            order_address (OrderAddress): Shipping and billing address IDs required for checkout.
 
         Raises:
             EmptyCartError: If the user's cart is empty.
             InsufficientStockError: If any product lacks sufficient stock.
+            AddressNotFoundError: If the provided addresses do not exist or do not belong to the user.
 
         Returns:
             Order: The created order.
@@ -60,9 +81,16 @@ class OrderService:
             if not p or it.quantity > p.stock:
                 raise InsufficientStockError()
 
-        # 4) Create order + items, decrement stock (single transaction)
+        shipping_addr = await AddressService.get(db, order_address.shipping_address_id, user_id)
+        billing_addr = await AddressService.get(db, order_address.billing_address_id, user_id)
+
+        # 5) Create order + items, decrement stock (single transaction)
         order = Order(
-            user_id=user_id, number="temp", total_amount=0
+            user_id=user_id,
+            number="temp",
+            total_amount=0,
+            shipping_address_id=shipping_addr.id,
+            billing_address_id=billing_addr.id,
         )  # temp; update after id assigned
         db.add(order)
         await db.flush()  # get order.id
@@ -127,4 +155,41 @@ class OrderService:
         order = (await db.exec(stmt)).first()
         if not order:
             raise OrderNotFoundError()
+        return order
+
+    @staticmethod
+    async def update_order_status(
+        order_id: UUID, new_status: OrderStatus, db: AsyncSession
+    ) -> Order:
+        """Update the status of an order enforcing allowed transitions.
+
+        Args:
+            order_id (UUID): The ID of the order.
+            new_status (OrderStatus): The new status to set.
+            db (AsyncSession): The database session.
+
+        Raises:
+            OrderNotFoundError: If the order does not exist.
+
+        Returns:
+            Order: The updated order.
+        """
+        stmt = select(Order).where(Order.id == order_id)
+        order = (await db.exec(stmt)).first()
+        if not order:
+            raise OrderNotFoundError()
+
+        current = order.status
+        allowed = OrderService._ALLOWED_TRANSITIONS.get(current, set())
+        # If trying to set same status, just return (idempotent)
+        if new_status == current:
+            return order
+        if new_status not in allowed:
+            from app.core.errors import InvalidOrderStatusTransitionError
+
+            raise InvalidOrderStatusTransitionError()
+        order.status = new_status
+        db.add(order)
+        await db.flush()
+        await db.refresh(order)
         return order

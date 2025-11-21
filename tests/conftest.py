@@ -7,6 +7,7 @@ allowing CI to export DATABASE_URL separately.
 """
 
 from collections.abc import AsyncGenerator
+from uuid import UUID
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -17,9 +18,11 @@ from sqlmodel import SQLModel, create_engine, text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import settings
+from app.core.enums import UserRole
 from app.core.security import get_password_hash
 from app.db.session import get_session
 from app.main import app
+from app.models.address import Address
 from app.models.category import Category
 from app.models.product import Product
 from app.models.user import User
@@ -127,6 +130,43 @@ def product_factory(db_session: AsyncSession, category_factory):
 
 
 @pytest.fixture
+def address_factory(db_session: AsyncSession):
+    async def _create(
+        user_id: UUID,
+        *,
+        line1: str = "123 Main St",
+        line2: str | None = None,
+        city: str = "City",
+        state: str = "ST",
+        postal_code: str = "00000",
+        country: str = "us",
+        first_name: str | None = None,
+        last_name: str | None = None,
+        company: str | None = None,
+        phone_number: str | None = None,
+    ):
+        addr = Address(
+            user_id=user_id,
+            line1=line1,
+            line2=line2,
+            city=city,
+            state=state,
+            postal_code=postal_code,
+            country=country,
+            first_name=first_name,
+            last_name=last_name,
+            company=company,
+            phone_number=phone_number,
+        )
+        db_session.add(addr)
+        await db_session.flush()
+        await db_session.refresh(addr)
+        return addr
+
+    return _create
+
+
+@pytest.fixture
 def verified_user_factory(user_factory):
     async def _create(email: str, password: str = "secret123"):
         return await user_factory(email=email, password=password, is_verified=True)
@@ -210,7 +250,7 @@ async def auth_client1(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, 
 async def auth_admin_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
     """Authenticated admin HTTP client for tests (JSON login)."""
     admin_user = User(
-        role="admin",
+        role=UserRole.ADMIN,
         email="admin@example.com",
         hashed_password=get_password_hash("admin1"),
         is_verified=True,

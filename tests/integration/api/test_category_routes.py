@@ -98,6 +98,9 @@ async def test_pagination_with_search(client: AsyncClient, db_session):
     CategoryFactory.create(name="Books")
     CategoryFactory.create(name="Board Games")
     CategoryFactory.create(name="Electronics")
+    # Add an inactive category that matches search but should be hidden by default
+    hidden = CategoryFactory.create(name="Book Accessories")
+    hidden.is_active = False
     await db_session.flush()
 
     # Search "bo" -> Books, Board Games (case-insensitive)
@@ -106,8 +109,16 @@ async def test_pagination_with_search(client: AsyncClient, db_session):
     page = r.json()
     names = [it["name"] for it in page["items"]]
     assert all("bo" in n.lower() for n in names)
+    assert "Book Accessories" not in names  # filtered out because inactive
     # And total reflects filtered count (not global)
     assert page["total"] == len(names)
+
+    # Now include inactive and search again for 'bo' -> should include hidden
+    r2 = await client.get(f"{BASE}/?search=Bo&limit=10&offset=0&include_inactive=true")
+    assert r2.status_code == 200
+    page2 = r2.json()
+    names2 = [it["name"] for it in page2["items"]]
+    assert "Book Accessories" in names2
 
 
 @pytest.mark.asyncio

@@ -2,6 +2,7 @@
 
 from pydantic import BaseModel, EmailStr, Field
 
+from app.core.enums import UserRole
 from app.schemas.base import TimestampMixin, UUIDMixin
 
 
@@ -25,6 +26,23 @@ class UserRead(UUIDMixin, TimestampMixin):
     is_active: bool
     is_verified: bool
     role: str
+    first_name: str | None = None
+    last_name: str | None = None
+    phone_number: str | None = None
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating user information."""
+
+    first_name: str | None = None
+    last_name: str | None = None
+    phone_number: str | None = None
+
+
+class UserRoleUpdate(BaseModel):
+    """Schema for updating a user's role."""
+
+    role: UserRole
 
 
 class Token(BaseModel):

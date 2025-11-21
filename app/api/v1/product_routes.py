@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker
+from app.core.enums import UserRole
 from app.db.session import get_session
 from app.schemas.base import Page
 from app.schemas.product import ProductCreate, ProductRead, ProductReadDetail, ProductUpdate
@@ -16,7 +17,7 @@ from app.services.product_service import ProductService
 from app.services.review_service import ReviewService
 
 router = APIRouter(prefix="/api/v1/products", tags=["Products"])
-role_checker = Depends(RoleChecker(["admin"]))
+role_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 
 @router.get("/", response_model=Page[ProductRead])
@@ -29,6 +30,9 @@ async def list_products(
     price_min: float | None = Query(None, ge=0),
     price_max: float | None = Query(None, ge=0),
     in_stock: bool | None = Query(None, description="True: stock>0, False: stock==0"),
+    include_unavailable: bool = Query(
+        False, description="Include products with is_available = False"
+    ),
     order_by: Literal["name", "price", "created_at", "updated_at"] = Query("name"),
     order_dir: Literal["asc", "desc"] = Query("asc"),
 ) -> Page[ProductRead]:
@@ -42,6 +46,7 @@ async def list_products(
         price_min=price_min,
         price_max=price_max,
         in_stock=in_stock,
+        include_unavailable=include_unavailable,
         order_by=order_by,
         order_dir=order_dir,
     )

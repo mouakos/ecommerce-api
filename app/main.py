@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI
 
+from app.api.v1.address_routes import router as address_router
 from app.api.v1.auth_routes import router as auth_router
 from app.api.v1.cart_routes import router as cart_router
 from app.api.v1.category_routes import router as category_router
@@ -9,6 +10,7 @@ from app.api.v1.meta_routes import router as meta_router
 from app.api.v1.order_routes import router as orders_router
 from app.api.v1.product_routes import router as product_router
 from app.api.v1.review_routes import router as review_router
+from app.api.v1.user_routes import router as user_router
 from app.core.error_handler import register_exception_handlers
 
 app = FastAPI(
@@ -42,6 +44,8 @@ register_exception_handlers(app)
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(user_router)
+app.include_router(address_router)
 app.include_router(cart_router)
 app.include_router(orders_router)
 app.include_router(category_router)

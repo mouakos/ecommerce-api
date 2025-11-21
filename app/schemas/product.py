@@ -16,6 +16,7 @@ class ProductCreate(BaseModel):
     price: float = Field(..., ge=0, description="Product price")
     stock: int = Field(..., ge=0, description="Units available in stock")
     category_id: UUID = Field(..., description="Category ID this product belongs to")
+    is_available: bool = Field(True, description="Whether the product is available for listing")
 
 
 class ProductRead(ProductCreate, UUIDMixin, TimestampMixin):
@@ -40,3 +41,4 @@ class ProductUpdate(BaseModel):
     price: float | None = Field(None, ge=0, description="Product price")
     stock: int | None = Field(None, ge=0, description="Units available in stock")
     category_id: UUID | None = Field(None, description="Category ID this product belongs to")
+    is_available: bool | None = Field(None, description="Availability flag")

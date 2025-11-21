@@ -56,11 +56,28 @@ async def test_list_products_with_search_and_filters(db_session: AsyncSession, c
             db_session,
         )
 
+    # Create an unavailable product matching search that should be hidden by default
+    unavailable = await ProductService.create(
+        ProductCreate(
+            name="Hidden Shirt",
+            description="hidden shirt",
+            price=11.0,
+            stock=5,
+            category_id=cat.id,
+            is_available=True,
+        ),
+        db_session,
+    )
+    # toggle availability off
+    unavailable.is_available = False
+    await db_session.flush()
+
     # search "shirt" should match Red/Blue Shirt
     items, total = await ProductService.list(db_session, limit=10, offset=0, search="shirt")
     assert total >= 2
     matched_names = {i.name for i in items}
     assert "Red Shirt" in matched_names and "Blue Shirt" in matched_names
+    assert "Hidden Shirt" not in matched_names
 
     # in_stock True should exclude Blue Shirt (stock 0)
     in_stock_items, _ = await ProductService.list(db_session, limit=10, offset=0, in_stock=True)
@@ -70,6 +87,12 @@ async def test_list_products_with_search_and_filters(db_session: AsyncSession, c
     # price_min filter
     expensive_items, _ = await ProductService.list(db_session, limit=10, offset=0, price_min=20)
     assert all(i.price >= 20 for i in expensive_items)
+
+    # Include unavailable to fetch hidden shirt via search
+    items_with_unavailable, _ = await ProductService.list(
+        db_session, limit=10, offset=0, search="hidden", include_unavailable=True
+    )
+    assert any(i.name == "Hidden Shirt" for i in items_with_unavailable)
 
 
 @pytest.mark.asyncio

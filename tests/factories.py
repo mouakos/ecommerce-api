@@ -42,6 +42,7 @@ class ProductFactory(BaseFactory):
     description = factory.Faker("sentence")
     price = factory.Faker("pyfloat", left_digits=2, right_digits=2, positive=True)
     stock = factory.Faker("pyint", min_value=1, max_value=100)
+    is_available = True
     category = factory.SubFactory(CategoryFactory)
 
 

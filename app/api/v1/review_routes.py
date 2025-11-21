@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api.deps import RoleChecker, get_current_user
+from app.core.enums import UserRole
 from app.core.errors import ReviewNotFoundError
 from app.db.session import get_session
 from app.models.user import User
@@ -21,7 +22,7 @@ from app.schemas.review import (
 from app.services.review_service import ReviewService
 
 router = APIRouter(prefix="/api/v1", tags=["Reviews"])
-admin_checker = Depends(RoleChecker(["admin"]))
+admin_checker = Depends(RoleChecker([UserRole.ADMIN]))
 
 
 @router.post(
@@ -50,7 +51,7 @@ async def list_product_reviews(
     order_dir: Literal["asc", "desc"] = Query("desc"),
 ) -> Page[ReviewRead]:
     """List visible reviews for a product. Admin can see all via separate endpoint if needed."""
-    is_admin = current_user is not None and current_user.role == "admin"
+    is_admin = current_user is not None and current_user.role == UserRole.ADMIN
     items, total = await ReviewService.list(
         db,
         product_id=product_id,
@@ -72,7 +73,7 @@ async def get_review(
     """Get a single review; invisible reviews only accessible by author or admin."""
     review = await ReviewService.get(review_id, db)
     if not review.is_visible and (
-        current_user.id != review.user_id and current_user.role != "admin"
+        current_user.id != review.user_id and current_user.role != UserRole.ADMIN
     ):
         raise ReviewNotFoundError()
     return review

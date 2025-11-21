@@ -15,7 +15,12 @@ class CategoryService:
 
     @staticmethod
     async def list(
-        db: AsyncSession, *, limit: int, offset: int, search: str | None = None
+        db: AsyncSession,
+        *,
+        limit: int,
+        offset: int,
+        search: str | None = None,
+        include_inactive: bool = False,
     ) -> tuple[list[Category], int]:
         """List categories with pagination and optional search.
 
@@ -24,6 +29,7 @@ class CategoryService:
             limit (int): Page size.
             offset (int): Offset.
             search (str | None): Name search.
+            include_inactive (bool): If True include inactive categories, otherwise only active ones.
 
         Returns:
             tuple[list[Category], int]: Items and total count.
@@ -31,7 +37,12 @@ class CategoryService:
         stmt = select(Category)
         count_stmt = select(func.count()).select_from(Category)
 
-        stmt = select(Category).order_by(Category.name).limit(limit).offset(offset)
+        # Base filters
+        if not include_inactive:
+            stmt = stmt.where(Category.is_active == True)  # noqa: E712
+            count_stmt = count_stmt.where(Category.is_active == True)  # noqa: E712
+
+        stmt = stmt.order_by(Category.name).limit(limit).offset(offset)
         if search:
             pattern = f"%{search.lower()}%"
             stmt = stmt.where(func.lower(Category.name).like(pattern))

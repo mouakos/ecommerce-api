@@ -85,6 +85,12 @@ class OrderNotFoundError(EcomError):
     pass
 
 
+class InvalidOrderStatusTransitionError(EcomError):
+    """Invalid status transition attempted for an order."""
+
+    pass
+
+
 class InsufficientStockError(EcomError):
     """Not enough stock for the requested product."""
 
@@ -135,5 +141,11 @@ class EmailSendingError(EcomError):
 
 class PasswordMismatchError(EcomError):
     """The provided passwords do not match."""
+
+    pass
+
+
+class AddressNotFoundError(EcomError):
+    """Address not found."""
 
     pass

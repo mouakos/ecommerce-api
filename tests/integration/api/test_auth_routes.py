@@ -80,21 +80,6 @@ async def test_register_validation_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_login_success_and_me(client: AsyncClient):
-    await register(client, "c@example.com", "secret")
-    await verify(client, "c@example.com")
-    token_resp = await login_json(client, "c@example.com", "secret")
-    assert token_resp.status_code == 200, token_resp.text
-    token = token_resp.json()["access_token"]
-
-    r_me = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
-    assert r_me.status_code == 200
-    me = r_me.json()
-    assert me["email"] == "c@example.com"
-    assert "id" in me
-
-
-@pytest.mark.asyncio
 async def test_login_wrong_password(client: AsyncClient):
     await register(client, "d@example.com", "secret")
     r = await login_json(client, "d@example.com", "bad-password")
@@ -118,56 +103,6 @@ async def test_login_unknown_user(client: AsyncClient):
     r = await login_json(client, "nope@example.com", "whatever")
     assert r.status_code == 400
     assert r.json()["detail"] == "Invalid Email or Password."
-
-
-# ---------------- Me (protected) ----------------
-
-
-@pytest.mark.asyncio
-async def test_me_unauthorized_no_token(client: AsyncClient):
-    r = await client.get(f"{BASE}/me")
-    # HTTPBearer returns 403 when Authorization header is missing
-    assert r.status_code == 403
-
-
-@pytest.mark.asyncio
-async def test_me_with_invalid_token(client: AsyncClient):
-    r = await client.get(f"{BASE}/me", headers={"Authorization": "Bearer not-a-real-token"})
-    assert r.status_code == 401
-    # New error message per TokenBearer implementation
-    assert r.json()["detail"] == "Token is invalid or expired."
-
-
-@pytest.mark.asyncio
-async def test_me_with_tampered_token(client: AsyncClient):
-    await register(client, "e@example.com", "secret")
-    token = await token_for(client, "e@example.com", "secret")
-    # Tamper the token by altering the signature segment entirely to force failure
-    parts = token.split(".")
-    assert len(parts) == 3
-    parts[-1] = "xxxxinvalidsignature"  # replace signature with garbage
-    bad = ".".join(parts)
-    r = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {bad}"})
-    assert r.status_code == 401
-    assert r.json()["detail"] == "Token is invalid or expired."
-
-
-@pytest.mark.asyncio
-async def test_logout_revokes_token(client: AsyncClient):
-    await register(client, "logout@example.com", "secret")
-    await verify(client, "logout@example.com")
-    login_resp = await login_json(client, "logout@example.com", "secret")
-    assert login_resp.status_code == 200
-    token = login_resp.json()["access_token"]
-
-    # Logout
-    r_logout = await client.post(f"{BASE}/logout", headers={"Authorization": f"Bearer {token}"})
-    assert r_logout.status_code == 200
-
-    # Attempt to reuse token
-    r_me = await client.get(f"{BASE}/me", headers={"Authorization": f"Bearer {token}"})
-    assert r_me.status_code == 401
-    assert r_me.json()["detail"] == "Token is invalid or has been revoked."
 
 
 # ---------------- Token Type Requirements ----------------

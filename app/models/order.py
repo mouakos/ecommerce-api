@@ -7,6 +7,7 @@ from uuid import UUID
 from sqlalchemy import Column, DateTime, UniqueConstraint
 from sqlmodel import Field, Relationship
 
+from app.core.enums import OrderStatus
 from app.models.base import TimestampMixin, UUIDMixin
 from app.utils.time import utcnow
 
@@ -20,8 +21,10 @@ class Order(UUIDMixin, TimestampMixin, table=True):
     __tablename__ = "orders"
 
     user_id: UUID = Field(foreign_key="users.id", index=True, ondelete="CASCADE")
-    number: str = Field(index=True, unique=True, description="Public order number")
-    status: str = Field(default="created")  # created, paid, cancelled
+    number: str = Field(index=True, unique=True)
+    status: OrderStatus = Field(default=OrderStatus.PENDING)
+    shipping_address_id: UUID = Field(foreign_key="addresses.id", index=True)
+    billing_address_id: UUID = Field(foreign_key="addresses.id", index=True)
     total_amount: float
     updated_at: datetime = Field(
         default_factory=utcnow,

@@ -1,6 +1,8 @@
-"""Service for managing user authentication."""
+"""Service for managing user authentication (credentials & password flows only).
 
-from sqlmodel import select
+Email / profile / listing concerns live in ``UserService``.
+"""
+
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.errors import (
@@ -12,37 +14,23 @@ from app.core.errors import (
 from app.core.security import get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.user import UserCreate
+from app.services.user_service import UserService
 
 
 class AuthService:
-    """Service for managing user authentication."""
-
-    @staticmethod
-    async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-        """Get a user by email.
-
-        Args:
-            db (AsyncSession): Database session.
-            email (str): User email.
-
-        Returns:
-            User | None: The user or None if not found.
-        """
-        stmt = select(User).where(User.email == email)
-        result = await db.exec(stmt)
-        return result.first()
+    """Authentication-centric operations: create account, authenticate, verify email, change password."""
 
     @staticmethod
     async def create_user(db: AsyncSession, data: UserCreate) -> User:
         """Create a new user.
 
         Raises:
-            ConflictError: If the email is already registered.
+            UserAlreadyExistsError: If the email is already registered.
 
         Returns:
             User: The created user.
         """
-        existing_user = await AuthService.get_user_by_email(db, data.email)
+        existing_user = await UserService.get_by_email(db, data.email)
         if existing_user:
             raise UserAlreadyExistsError()
 
@@ -68,7 +56,7 @@ class AuthService:
         Returns:
             User: The authenticated user.
         """
-        user = await AuthService.get_user_by_email(db, email)
+        user = await UserService.get_by_email(db, email)
         if not user or not verify_password(password, user.hashed_password):
             raise InvalidCredentialsError()
         return user
@@ -84,13 +72,13 @@ class AuthService:
         Raises:
             UserNotFoundError: If the user does not exist.
         """
-        user = await AuthService.get_user_by_email(db, email)
+        user = await UserService.get_by_email(db, email)
         if not user:
             raise UserNotFoundError()
-        if user:
-            user.is_verified = True
-            db.add(user)
-            await db.flush()
+        user.is_verified = True
+        db.add(user)
+        await db.flush()
+        await db.commit()
 
     @staticmethod
     async def change_user_password(
@@ -108,7 +96,7 @@ class AuthService:
             UserNotFoundError: If the user does not exist.
             PasswordMismatchError: If the new password and confirmation do not match.
         """
-        user = await AuthService.get_user_by_email(db, user_email)
+        user = await UserService.get_by_email(db, user_email)
         if not user:
             raise UserNotFoundError()
 
@@ -118,3 +106,4 @@ class AuthService:
         user.hashed_password = get_password_hash(new_password)
         db.add(user)
         await db.flush()
+        await db.commit()
