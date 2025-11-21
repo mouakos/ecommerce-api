@@ -17,6 +17,7 @@ class Category(UUIDMixin, TimestampMixin, table=True):
     __tablename__ = "categories"
 
     name: str = Field(index=True, unique=True)
+    is_active: bool = Field(default=True)
     updated_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False),

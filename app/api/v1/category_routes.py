@@ -24,9 +24,12 @@ async def list_categories(
     limit: int = Query(10, ge=1, le=100, description="Items per page"),
     offset: int = Query(0, ge=0, description="Offset for pagination"),
     search: str | None = Query(None, description="Search by name (case-insensitive)"),
+    include_inactive: bool = Query(False, description="Include inactive categories in results"),
 ) -> Page[CategoryRead]:
     """List all categories."""
-    categories, total = await CategoryService.list(db, limit=limit, offset=offset, search=search)
+    categories, total = await CategoryService.list(
+        db, limit=limit, offset=offset, search=search, include_inactive=include_inactive
+    )
     return Page[CategoryRead](items=categories, total=total, limit=limit, offset=offset)
 
 

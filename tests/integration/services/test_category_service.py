@@ -30,12 +30,24 @@ async def test_create_category_duplicate(db_session: AsyncSession):
 async def test_list_categories_with_search(db_session: AsyncSession):
     for name in ["Shoes", "Shirts", "Pants"]:
         await CategoryService.create(CategoryCreate(name=name), db_session)
+    # Create an inactive category that should not appear by default
+    inactive = await CategoryService.create(CategoryCreate(name="Hidden"), db_session)
+    inactive.is_active = False
+    await db_session.flush()
 
     items, total = await CategoryService.list(db_session, limit=10, offset=0, search="sh")
     assert total >= 2  # at least Shoes & Shirts
     names = {c.name for c in items}
     assert "Shoes" in names
     assert "Shirts" in names
+    assert "Hidden" not in names
+
+    # When including inactive, Hidden should appear if it matches search
+    items_with_inactive, total_with_inactive = await CategoryService.list(
+        db_session, limit=10, offset=0, search="hid", include_inactive=True
+    )
+    names2 = {c.name for c in items_with_inactive}
+    assert "Hidden" in names2
 
 
 @pytest.mark.asyncio
