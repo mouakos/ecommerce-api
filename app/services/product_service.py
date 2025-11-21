@@ -32,6 +32,7 @@ class ProductService:
         price_min: float | None = None,
         price_max: float | None = None,
         in_stock: bool | None = None,
+        include_unavailable: bool = False,
         order_by: OrderBy = "name",
         order_dir: OrderDir = "asc",
     ) -> tuple[list[Product], int]:
@@ -46,6 +47,7 @@ class ProductService:
             price_min (float | None): Min price.
             price_max (float | None): Max price.
             in_stock (bool | None): Stock filter.
+            include_unavailable (bool): If True include products where is_available == False.
             order_by (OrderBy): Sort field.
             order_dir (OrderDir): Sort direction.
 
@@ -54,6 +56,11 @@ class ProductService:
         """
         stmt = select(Product)
         count_stmt = select(func.count()).select_from(Product)
+
+        # Availability filter (soft-hide)
+        if not include_unavailable:
+            stmt = stmt.where(Product.is_available == True)  # noqa: E712
+            count_stmt = count_stmt.where(Product.is_available == True)  # noqa: E712
 
         if search:
             like = f"%{search.lower()}%"

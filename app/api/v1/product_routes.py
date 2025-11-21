@@ -30,6 +30,9 @@ async def list_products(
     price_min: float | None = Query(None, ge=0),
     price_max: float | None = Query(None, ge=0),
     in_stock: bool | None = Query(None, description="True: stock>0, False: stock==0"),
+    include_unavailable: bool = Query(
+        False, description="Include products with is_available = False"
+    ),
     order_by: Literal["name", "price", "created_at", "updated_at"] = Query("name"),
     order_dir: Literal["asc", "desc"] = Query("asc"),
 ) -> Page[ProductRead]:
@@ -43,6 +46,7 @@ async def list_products(
         price_min=price_min,
         price_max=price_max,
         in_stock=in_stock,
+        include_unavailable=include_unavailable,
         order_by=order_by,
         order_dir=order_dir,
     )

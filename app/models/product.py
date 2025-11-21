@@ -25,6 +25,7 @@ class Product(UUIDMixin, TimestampMixin, table=True):
     description: str | None = None
     price: float
     stock: int
+    is_available: bool = Field(default=True)
     updated_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime, default=utcnow, onupdate=utcnow, nullable=False),

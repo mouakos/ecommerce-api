@@ -119,12 +119,20 @@ async def test_list_products_empty(client: AsyncClient):
 async def test_list_products_after_creations(client: AsyncClient, db_session):
     ProductFactory.create(name="AAA")
     ProductFactory.create(name="BBB")
+    hidden = ProductFactory.create(name="CCC")
+    hidden.is_available = False
     await db_session.flush()
 
     r = await client.get(f"{BASE}/")
     assert r.status_code == 200
     names = [p["name"] for p in r.json()["items"]]
     assert "AAA" in names and "BBB" in names
+    assert "CCC" not in names
+
+    # Include unavailable
+    r2 = await client.get(f"{BASE}/?include_unavailable=true")
+    names2 = [p["name"] for p in r2.json()["items"]]
+    assert "CCC" in names2
 
 
 @pytest.mark.asyncio
